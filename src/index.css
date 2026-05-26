@@ -1,0 +1,162 @@
+@font-face {
+  font-family: 'PixelPurl';
+  src: url('/PixelPurl.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background-color: #04080c;
+    color: #dceeff;
+    font-family: 'PixelPurl', monospace;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+    margin: 0;
+  }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: #08111a; }
+  ::-webkit-scrollbar-thumb { background: #132030; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #1e3550; }
+}
+
+@layer components {
+  .card {
+    @apply bg-surface border border-line rounded-xl relative overflow-hidden;
+  }
+
+  .bracket::before,
+  .bracket::after {
+    content: '';
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-style: solid;
+    border-color: rgba(0, 224, 255, 0.25);
+    pointer-events: none;
+    z-index: 1;
+  }
+  .bracket::before {
+    top: 10px; left: 10px;
+    border-width: 1px 0 0 1px;
+  }
+  .bracket::after {
+    bottom: 10px; right: 10px;
+    border-width: 0 1px 1px 0;
+  }
+
+  .bracket-gold::before,
+  .bracket-gold::after {
+    border-color: rgba(240, 184, 48, 0.30);
+  }
+
+  .btn-ghost {
+    @apply px-4 py-2 rounded-lg border border-line-bright text-ink-dim font-pixel
+      hover:border-accent/40 hover:text-accent hover:bg-accent/5
+      transition-all duration-200 text-sm tracking-wide;
+  }
+}
+
+@layer utilities {
+  .bg-grid {
+    background-image:
+      linear-gradient(rgba(0, 224, 255, 0.022) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 224, 255, 0.022) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .text-gradient-accent {
+    background: linear-gradient(90deg, #00e0ff, #60efff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-gold {
+    background: linear-gradient(90deg, #f0b830, #ffe066);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
+
+/* Staggered row entry animations */
+.lb-row {
+  opacity: 0;
+  animation: rowEnter 0.4s ease-out forwards;
+}
+.lb-row:nth-child(1)  { animation-delay:  0ms; }
+.lb-row:nth-child(2)  { animation-delay: 50ms; }
+.lb-row:nth-child(3)  { animation-delay: 100ms; }
+.lb-row:nth-child(4)  { animation-delay: 150ms; }
+.lb-row:nth-child(5)  { animation-delay: 200ms; }
+.lb-row:nth-child(6)  { animation-delay: 250ms; }
+.lb-row:nth-child(7)  { animation-delay: 300ms; }
+.lb-row:nth-child(8)  { animation-delay: 350ms; }
+.lb-row:nth-child(9)  { animation-delay: 400ms; }
+.lb-row:nth-child(10) { animation-delay: 450ms; }
+
+@keyframes rowEnter {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Animated score bar fill */
+@keyframes fillBar {
+  from { width: 0%; }
+  to   { width: var(--bar-width, 0%); }
+}
+.score-bar { animation: fillBar 0.9s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+
+/* Skeleton shimmer */
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #0d1c2a 0%, #1a3048 50%, #0d1c2a 100%);
+  background-size: 200% auto;
+  animation: shimmer 1.8s linear infinite;
+}
+
+/* Gold rank glow */
+@keyframes goldGlow {
+  0%, 100% { text-shadow: 0 0 8px rgba(240,184,48,0.4); }
+  50%       { text-shadow: 0 0 18px rgba(240,184,48,0.85), 0 0 32px rgba(240,184,48,0.35); }
+}
+.glow-gold { animation: goldGlow 2.5s ease-in-out infinite; }
+
+/* Cyan live dot pulse */
+@keyframes livePulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%       { transform: scale(1.4); opacity: 0.55; }
+}
+.live-dot { animation: livePulse 1.6s ease-in-out infinite; }
+
+/* Modal entry */
+@keyframes modalEnter {
+  from { opacity: 0; transform: scale(0.94) translateY(12px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.modal-enter { animation: modalEnter 0.22s cubic-bezier(0.4,0,0.2,1) forwards; }
+
+/* Podium card entry */
+.podium-1 { animation: fadeInUp 0.55s ease-out 0ms   forwards; opacity: 0; }
+.podium-2 { animation: fadeInUp 0.55s ease-out 120ms forwards; opacity: 0; }
+.podium-3 { animation: fadeInUp 0.55s ease-out 200ms forwards; opacity: 0; }
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
