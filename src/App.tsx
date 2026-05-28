@@ -15,7 +15,6 @@ export default function App() {
     loading,
     error,
     lastUpdated,
-    countdown,
     searchQuery,
     setSearchQuery,
     selectedPlayer,
@@ -86,7 +85,6 @@ export default function App() {
       </main>
 
       <StatusBar
-        countdown={countdown}
         onRefresh={refresh}
         totalPlayers={players.length}
         error={error}

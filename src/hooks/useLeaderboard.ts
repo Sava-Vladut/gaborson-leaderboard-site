@@ -2,8 +2,6 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { fetchLeaderboard } from '../api/leaderboard';
 import type { Player } from '../types';
 
-const REFRESH_MS = 10_000;
-
 export interface LeaderboardState {
   players: Player[];
   filteredPlayers: Player[];
@@ -12,7 +10,6 @@ export interface LeaderboardState {
   loading: boolean;
   error: string | null;
   lastUpdated: Date | null;
-  countdown: number;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
   selectedPlayer: Player | null;
@@ -25,7 +22,6 @@ export function useLeaderboard(): LeaderboardState {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [countdown, setCountdown] = useState(REFRESH_MS / 1000);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
 
@@ -47,24 +43,6 @@ export function useLeaderboard(): LeaderboardState {
   // Initial fetch
   useEffect(() => { load(false); }, [load]);
 
-  // Auto-refresh + countdown
-  useEffect(() => {
-    let tick = REFRESH_MS / 1000;
-    setCountdown(tick);
-
-    const id = setInterval(() => {
-      tick -= 1;
-      setCountdown(tick);
-      if (tick <= 0) {
-        tick = REFRESH_MS / 1000;
-        setCountdown(tick);
-        load(true);
-      }
-    }, 1000);
-
-    return () => clearInterval(id);
-  }, [load]);
-
   const filteredPlayers = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return players;
@@ -82,7 +60,6 @@ export function useLeaderboard(): LeaderboardState {
     loading,
     error,
     lastUpdated,
-    countdown,
     searchQuery,
     setSearchQuery,
     selectedPlayer,
