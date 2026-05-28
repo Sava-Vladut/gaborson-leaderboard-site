@@ -1,16 +1,9 @@
-import { User, Star } from 'lucide-react';
+import { Star } from 'lucide-react';
 import type { Player } from '../types';
 
 export default function PlayerRankDisplay({ player }: { player: Player | null }) {
   if (!player) {
-    return (
-      <div className="card p-5 text-center border-dashed">
-        <User className="w-10 h-10 text-ink-ghost mx-auto mb-3" />
-        <p className="text-ink-ghost font-pixel text-lg leading-relaxed">
-          Search for a player<br />to see their rank
-        </p>
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -30,9 +23,6 @@ export default function PlayerRankDisplay({ player }: { player: Player | null })
           <p className="font-pixel text-2xl text-ink leading-tight">{player.name}</p>
           <p className="font-pixel text-accent text-xl mt-1">
             {player.kills.toLocaleString()} kills
-          </p>
-          <p className="font-pixel text-ink-ghost text-sm uppercase tracking-wider mt-1">
-            {player.difficulty}
           </p>
         </div>
       </div>

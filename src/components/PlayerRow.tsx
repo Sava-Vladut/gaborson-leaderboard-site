@@ -1,11 +1,4 @@
-import { ChevronUp, ChevronDown, Minus } from 'lucide-react';
 import type { Player } from '../types';
-
-function pseudoChange(name: string, rank: number): number {
-  let h = rank;
-  for (const c of name) h = (h * 17 + c.charCodeAt(0));
-  return ((h % 7) + 7) % 7 - 3;
-}
 
 const RANK_STYLE: Record<number, { text: string; bg: string; border: string }> = {
   1: { text: 'text-gold glow-gold', bg: 'bg-gold/5',   border: 'border-gold/30' },
@@ -22,7 +15,6 @@ export default function PlayerRow({ player, maxKills, onClick }: Props) {
   const top   = player.rank <= 3;
   const rs    = RANK_STYLE[player.rank];
   const fill  = Math.max(2, (player.kills / maxKills) * 100);
-  const delta = pseudoChange(player.name, player.rank);
 
   return (
     <div
@@ -55,24 +47,12 @@ export default function PlayerRow({ player, maxKills, onClick }: Props) {
           ${player.rank === 1 ? 'text-gold' : top ? 'text-ink' : 'text-ink-dim group-hover:text-ink'}`}>
           {player.name}
         </p>
-        <p className="font-pixel text-xs text-ink-ghost uppercase tracking-wider mt-0.5 truncate">
-          {player.difficulty}
-        </p>
         <div className="mt-1.5 h-[3px] rounded-full bg-line overflow-hidden">
           <div
             className="h-full rounded-full kills-bar"
             style={{ '--bar-width': `${fill}%`, backgroundColor: barColor(player.rank) } as React.CSSProperties}
           />
         </div>
-      </div>
-
-      {/* Rank delta */}
-      <div className="hidden sm:flex flex-shrink-0 items-center justify-end gap-0.5 w-12">
-        {delta > 0
-          ? <><ChevronUp className="w-4 h-4 text-success" /><span className="font-pixel text-base text-success">{delta}</span></>
-          : delta < 0
-          ? <><ChevronDown className="w-4 h-4 text-danger" /><span className="font-pixel text-base text-danger">{Math.abs(delta)}</span></>
-          : <Minus className="w-4 h-4 text-ink-ghost" />}
       </div>
 
       {/* Kills */}

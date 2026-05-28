@@ -36,8 +36,8 @@ Response:
 
 ```json
 [
-  { "name": "NightStalker", "kills": 98750, "difficulty": "Nightmare" },
-  { "name": "Sava", "kills": 87430, "difficulty": "Hard" }
+  { "name": "NightStalker", "kills": 98750 },
+  { "name": "Sava", "kills": 87430 }
 ]
 ```
 
@@ -46,7 +46,7 @@ Response:
 ```bash
 curl -X POST http://localhost:3001/api/leaderboard \
   -H "Content-Type: application/json" \
-  -d '{"name":"UnityPlayer","kills":12345,"difficulty":"Hard"}'
+  -d '{"name":"UnityPlayer","kills":12345}'
 ```
 
 If the player already exists, the backend keeps their highest kill count.
@@ -64,8 +64,7 @@ with JSON:
 ```json
 {
   "name": "UnityPlayer",
-  "kills": 12345,
-  "difficulty": "Hard"
+  "kills": 12345
 }
 ```
 

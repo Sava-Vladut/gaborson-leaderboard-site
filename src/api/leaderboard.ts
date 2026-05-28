@@ -1,11 +1,11 @@
 import type { ApiPlayer, Player } from '../types';
 
 export const MOCK_PLAYERS: ApiPlayer[] = [
-  { name: 'NightStalker',  kills: 98750, difficulty: 'Nightmare' },
-  { name: 'Sava',          kills: 87430, difficulty: 'Hard' },
-  { name: 'CryptoKnight',  kills: 76200, difficulty: 'Hard' },
-  { name: 'VoidWalker_99', kills: 65890, difficulty: 'Normal' },
-  { name: 'PixelReaper',   kills: 54120, difficulty: 'Normal' },
+  { name: 'NightStalker',  kills: 98750 },
+  { name: 'Sava',          kills: 87430 },
+  { name: 'CryptoKnight',  kills: 76200 },
+  { name: 'VoidWalker_99', kills: 65890 },
+  { name: 'PixelReaper',   kills: 54120 },
   { name: 'ElitePhantom',  kills: 48650 },
   { name: 'StormBringer',  kills: 42300 },
   { name: 'NeonPulse',     kills: 38720 },
@@ -28,7 +28,6 @@ function normalize(data: ApiPlayer[]): Player[] {
     .sort((a, b) => b.kills - a.kills)
     .map((p, i) => ({
       ...p,
-      difficulty: p.difficulty ?? 'Normal',
       rank: i + 1,
       id: p.name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
     }));

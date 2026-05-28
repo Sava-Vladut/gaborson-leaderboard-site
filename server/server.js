@@ -62,7 +62,6 @@ async function writeLeaderboard(players) {
 function normalizePlayer(input) {
   const name = String(input.name ?? input.playerName ?? '').trim();
   const kills = Number(input.kills ?? input.score);
-  const difficulty = String(input.difficulty ?? 'Normal').trim();
 
   if (!name) {
     return { error: 'name is required' };
@@ -76,15 +75,7 @@ function normalizePlayer(input) {
     return { error: 'kills must be a non-negative integer' };
   }
 
-  if (!difficulty) {
-    return { error: 'difficulty is required' };
-  }
-
-  if (difficulty.length > 30) {
-    return { error: 'difficulty must be 30 characters or fewer' };
-  }
-
-  return { player: { name, kills, difficulty } };
+  return { player: { name, kills } };
 }
 
 function sortPlayers(players) {
@@ -92,7 +83,6 @@ function sortPlayers(players) {
     .map((player) => ({
       name: String(player.name ?? player.playerName ?? '').trim(),
       kills: Number(player.kills ?? player.score ?? 0),
-      difficulty: String(player.difficulty ?? 'Normal').trim() || 'Normal',
     }))
     .filter((player) => player.name && Number.isFinite(player.kills))
     .sort((a, b) => b.kills - a.kills || a.name.localeCompare(b.name))
@@ -120,7 +110,6 @@ async function handlePostLeaderboard(req, res) {
     existing.name = player.name;
     if (player.kills >= existing.kills) {
       existing.kills = player.kills;
-      existing.difficulty = player.difficulty;
     }
   } else {
     players.push(player);

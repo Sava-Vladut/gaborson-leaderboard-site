@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, useState } from 'react';
 import { X, Crown, Medal, TrendingUp, ChevronUp, ChevronDown, Shield } from 'lucide-react';
 import type { Player } from '../types';
 
@@ -11,15 +11,19 @@ function playerColor(name: string): string {
   return p[h];
 }
 
-function buildHistory(kills: number, points = 18): number[] {
-  let cur = kills * 0.5;
+function buildRankHistory(rank: number, totalPlayers: number, points = 18): number[] {
+  let cur = Math.min(totalPlayers, Math.max(1, rank + Math.ceil(totalPlayers * 0.35)));
   const out: number[] = [];
+
   for (let i = 0; i < points; i++) {
-    cur += (Math.random() - 0.26) * kills * 0.07;
-    cur = Math.max(10, cur);
+    const progress = i / Math.max(1, points - 1);
+    const target = rank + (cur - rank) * (1 - progress);
+    cur = target + (Math.random() - 0.55) * Math.max(1, totalPlayers * 0.08);
+    cur = Math.min(totalPlayers, Math.max(1, cur));
     out.push(Math.round(cur));
   }
-  out.push(kills);
+
+  out.push(rank);
   return out;
 }
 
@@ -36,21 +40,36 @@ function pctColor(pct: number): string {
   return '#7a9bb8';
 }
 
-/* ─── sparkline ───────────────────────────────────────────── */
+/* ─── rankline ───────────────────────────────────────────── */
 
-function Sparkline({ data, color }: { data: number[]; color: string }) {
+function Rankline({ data, color }: { data: number[]; color: string }) {
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const W = 500, H = 110, P = 10;
   const max = Math.max(...data), min = Math.min(...data), rng = max - min || 1;
-  const kills = data.map((v, i) => ({
+  const ranks = data.map((v, i) => ({
     x: P + (i / (data.length - 1)) * (W - P * 2),
-    y: H - P - ((v - min) / rng) * (H - P * 2),
+    y: P + ((v - min) / rng) * (H - P * 2),
   }));
-  const line = kills.reduce((d, p, i) => i === 0 ? `M${p.x},${p.y}` : `${d} L${p.x},${p.y}`, '');
-  const area = `${line} L${kills.at(-1)!.x},${H} L${kills[0].x},${H} Z`;
-  const last = kills.at(-1)!;
+  const line = ranks.reduce((d, p, i) => i === 0 ? `M${p.x},${p.y}` : `${d} L${p.x},${p.y}`, '');
+  const area = `${line} L${ranks.at(-1)!.x},${H} L${ranks[0].x},${H} Z`;
+  const activeIndex = hoverIndex ?? data.length - 1;
+  const active = ranks[activeIndex];
+
+  function handlePointerMove(e: React.PointerEvent<SVGSVGElement>) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * W;
+    const ratio = Math.min(1, Math.max(0, (x - P) / (W - P * 2)));
+    setHoverIndex(Math.round(ratio * (data.length - 1)));
+  }
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-28" preserveAspectRatio="none">
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      className="w-full h-28 cursor-crosshair"
+      preserveAspectRatio="none"
+      onPointerMove={handlePointerMove}
+      onPointerLeave={() => setHoverIndex(null)}
+    >
       <defs>
         <linearGradient id="sparkg" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%"   stopColor={color} stopOpacity="0.35" />
@@ -68,8 +87,15 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
       <path d={area} fill="url(#sparkg)" />
       <path d={line} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"
         strokeLinejoin="round" filter="url(#glow)" />
-      <circle cx={last.x} cy={last.y} r="5" fill={color} filter="url(#glow)" />
-      <circle cx={last.x} cy={last.y} r="2.5" fill="#04080c" />
+      <line x1={active.x} y1={P} x2={active.x} y2={H - P} stroke={color} strokeOpacity="0.28" strokeDasharray="3 5" />
+      <circle cx={active.x} cy={active.y} r="6" fill={color} filter="url(#glow)" />
+      <circle cx={active.x} cy={active.y} r="2.75" fill="#04080c" />
+      <g transform={`translate(${Math.min(W - 112, Math.max(8, active.x - 52))}, ${active.y > 46 ? active.y - 42 : active.y + 16})`}>
+        <rect width="104" height="28" rx="5" fill="#08111a" stroke={color} strokeOpacity="0.38" />
+        <text x="52" y="18" textAnchor="middle" fill="#dceeff" fontSize="12" fontFamily="monospace">
+          Rank #{data[activeIndex]}
+        </text>
+      </g>
     </svg>
   );
 }
@@ -89,10 +115,10 @@ interface Props { player: Player; players: Player[]; onClose: () => void; }
 export default function PlayerProfileModal({ player, players, onClose }: Props) {
   const ref     = useRef<HTMLDivElement>(null);
   const color   = playerColor(player.name);
-  const history = useMemo(() => buildHistory(player.kills), [player.name]);
   const badge   = RANK_BADGE[player.rank];
 
   const totalPlayers = players.length;
+  const rankHistory  = useMemo(() => buildRankHistory(player.rank, totalPlayers), [player.rank, totalPlayers]);
   const topPct       = Math.max(1, Math.ceil((player.rank / totalPlayers) * 100));
   const pc           = pctColor(topPct);
   const killsRating  = Math.round((player.kills / (players[0]?.kills ?? player.kills)) * 100);
@@ -100,9 +126,6 @@ export default function PlayerProfileModal({ player, players, onClose }: Props) 
   const playerBelow  = players[player.rank];
   const gapUp        = playerAbove ? playerAbove.kills - player.kills : null;
   const gapDown      = playerBelow ? player.kills - playerBelow.kills : null;
-  const barMin       = playerBelow?.kills ?? 0;
-  const barMax       = playerAbove?.kills ?? player.kills;
-  const barPos       = barMax > barMin ? ((player.kills - barMin) / (barMax - barMin)) * 100 : 100;
 
   useEffect(() => {
     const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -114,10 +137,7 @@ export default function PlayerProfileModal({ player, players, onClose }: Props) 
   const stats = [
     { label: 'Kills',       value: fmt(player.kills),                        sub: player.kills.toLocaleString(),                   cls: 'text-ink'      },
     { label: 'Global Rank', value: `#${player.rank}`,                        sub: `of ${totalPlayers} players`,                    cls: 'text-accent'   },
-    { label: 'Difficulty',  value: player.difficulty,                        sub: 'submitted mode',                                cls: 'text-ink-dim'  },
     { label: 'Kills %',     value: `${killsRating}%`,                        sub: 'of leader kills',                               cls: 'text-ink-dim'  },
-    { label: 'Gap Up',      value: gapUp   != null ? `+${fmt(gapUp)}`   : '—', sub: gapUp   != null ? `to rank #${player.rank - 1}` : 'you lead all',    cls: gapUp   != null ? 'text-danger'      : 'text-gold'      },
-    { label: 'Lead',        value: gapDown != null ? `+${fmt(gapDown)}` : '—', sub: gapDown != null ? `over #${player.rank + 1}`   : 'last place',       cls: gapDown != null ? 'text-success'     : 'text-ink-ghost' },
     { label: 'Outranked',   value: `${100 - topPct}%`,                       sub: 'of field behind',                               cls: 'text-ink-dim'  },
   ];
 
@@ -237,67 +257,73 @@ export default function PlayerProfileModal({ player, players, onClose }: Props) 
               ))}
             </div>
 
-            {/* Rank position bar */}
+            {/* Rank position */}
             <div className="bg-elevated rounded-xl p-4 border border-line">
-              <p className="text-xl font-pixel text-ink-ghost uppercase tracking-widest mb-4">Rank Position</p>
-
-              <div className="relative h-3 rounded-full bg-line mb-5 overflow-visible">
-                {[25, 50, 75].map(t => (
-                  <div key={t} className="absolute top-0 h-full w-px bg-void/60 z-10" style={{ left: `${t}%` }} />
-                ))}
-                <div className="absolute left-0 top-0 h-full rounded-full"
-                  style={{ width: `${barPos}%`, background: `linear-gradient(90deg, ${color}30, ${color}90)` }} />
-                <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-20" style={{ left: `${barPos}%` }}>
-                  <div className="w-5 h-5 rounded-full border-2 border-surface flex items-center justify-center"
-                    style={{ backgroundColor: color, boxShadow: `0 0 12px ${color}80` }}>
-                    <div className="w-1.5 h-1.5 rounded-full bg-void" />
-                  </div>
-                </div>
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <p className="text-xl font-pixel text-ink-ghost uppercase tracking-widest">Rank Position</p>
+                <p className="font-pixel text-xl text-ink">
+                  #{player.rank} <span className="text-ink-ghost">of {totalPlayers}</span>
+                </p>
               </div>
 
-              <div className="flex items-start justify-between text-xl font-pixel">
-                <div className="max-w-[38%]">
-                  {playerBelow ? (
-                    <>
-                      <p className="text-ink-ghost truncate">#{playerBelow.rank} · {playerBelow.name}</p>
-                      <p className="text-success mt-1 flex items-center gap-0.5">
-                        <ChevronDown className="w-3.5 h-3.5" />+{fmt(gapDown!)} lead
-                      </p>
-                    </>
-                  ) : <p className="text-ink-ghost">last place</p>}
-                </div>
-
-                <div className="text-center flex-shrink-0 px-2">
-                  <div className="w-px h-4 bg-line mx-auto mb-1" />
-                  <p className="font-pixel text-sm" style={{ color }}>{player.name[0]}</p>
-                  <p className="text-ink-ghost text-base mt-0.5">you</p>
-                </div>
-
-                <div className="text-right max-w-[38%]">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 font-pixel">
+                <div className="rounded-lg border border-line bg-surface/45 p-3 min-w-0">
+                  <p className="text-base text-ink-ghost uppercase tracking-wider mb-2">Above</p>
                   {playerAbove ? (
                     <>
-                      <p className="text-ink-ghost truncate">#{playerAbove.rank} · {playerAbove.name}</p>
-                      <p className="text-danger mt-1 flex items-center justify-end gap-0.5">
-                        <ChevronUp className="w-3.5 h-3.5" />{fmt(gapUp!)} away
+                      <p className="text-xl text-ink truncate">#{playerAbove.rank} {playerAbove.name}</p>
+                      <p className="text-base text-danger mt-1 flex items-center gap-1">
+                        <ChevronUp className="w-4 h-4" /> {fmt(gapUp!)} kills ahead
                       </p>
                     </>
-                  ) : <p className="text-gold">🏆 Leader</p>}
+                  ) : (
+                    <>
+                      <p className="text-xl text-gold">Leader</p>
+                      <p className="text-base text-ink-ghost mt-1">No one is ahead</p>
+                    </>
+                  )}
+                </div>
+
+                <div
+                  className="rounded-lg border p-3 text-center min-w-0"
+                  style={{ borderColor: `${color}50`, backgroundColor: `${color}10` }}
+                >
+                  <p className="text-base uppercase tracking-wider mb-2" style={{ color }}>You</p>
+                  <p className="text-2xl text-ink truncate">#{player.rank} {player.name}</p>
+                  <p className="text-base text-ink-ghost mt-1">{fmt(player.kills)} kills</p>
+                </div>
+
+                <div className="rounded-lg border border-line bg-surface/45 p-3 min-w-0 text-left sm:text-right">
+                  <p className="text-base text-ink-ghost uppercase tracking-wider mb-2">Below</p>
+                  {playerBelow ? (
+                    <>
+                      <p className="text-xl text-ink truncate">#{playerBelow.rank} {playerBelow.name}</p>
+                      <p className="text-base text-success mt-1 flex items-center gap-1 sm:justify-end">
+                        <ChevronDown className="w-4 h-4" /> {fmt(gapDown!)} kills behind
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-xl text-ink-ghost">Last</p>
+                      <p className="text-base text-ink-ghost mt-1">No one is behind</p>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Kills history */}
+            {/* Rank history */}
             <div className="bg-elevated rounded-xl p-4 border border-line">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <TrendingUp className="w-4 h-4 text-accent" />
-                  <p className="text-xl font-pixel text-ink-ghost uppercase tracking-widest">Kills History</p>
+                  <p className="text-xl font-pixel text-ink-ghost uppercase tracking-widest">Rank History</p>
                 </div>
                 <span className="text-xl font-pixel text-ink-ghost">
-                  Peak <span className="text-ink">{fmt(Math.max(...history))}</span>
+                  Best <span className="text-ink">#{Math.min(...rankHistory)}</span>
                 </span>
               </div>
-              <Sparkline data={history} color={color} />
+              <Rankline data={rankHistory} color={color} />
             </div>
 
           </div>

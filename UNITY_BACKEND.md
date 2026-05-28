@@ -7,8 +7,7 @@ Current entry shape:
 ```json
 {
   "name": "UnityPlayer",
-  "kills": 12345,
-  "difficulty": "Hard"
+  "kills": 12345
 }
 ```
 
@@ -62,8 +61,7 @@ with JSON:
 ```json
 {
   "name": "UnityPlayer",
-  "kills": 12345,
-  "difficulty": "Hard"
+  "kills": 12345
 }
 ```
 
@@ -71,9 +69,7 @@ Rules:
 
 - `name` is required.
 - `kills` must be a non-negative whole number.
-- `difficulty` is a string, for example `Easy`, `Normal`, `Hard`, or `Nightmare`.
 - If the player already exists, the backend keeps their highest kill count.
-  If the new submission is the new highest kill count, its `difficulty` is saved too.
 
 ## Get Leaderboard
 
@@ -89,8 +85,7 @@ Response example:
 [
   {
     "name": "UnityPlayer",
-    "kills": 12345,
-    "difficulty": "Hard"
+    "kills": 12345
   }
 ]
 ```
@@ -114,21 +109,19 @@ public class LeaderboardClient : MonoBehaviour
     {
         public string name;
         public int kills;
-        public string difficulty;
     }
 
-    public void SubmitKills(string name, int kills, string difficulty)
+    public void SubmitKills(string name, int kills)
     {
-        StartCoroutine(PostKills(name, kills, difficulty));
+        StartCoroutine(PostKills(name, kills));
     }
 
-    private IEnumerator PostKills(string name, int kills, string difficulty)
+    private IEnumerator PostKills(string name, int kills)
     {
         KillsPayload payload = new KillsPayload
         {
             name = name,
-            kills = kills,
-            difficulty = difficulty
+            kills = kills
         };
 
         string json = JsonUtility.ToJson(payload);
@@ -166,9 +159,8 @@ public class GameOverExample : MonoBehaviour
     {
         string name = "Player1";
         int finalKills = 12345;
-        string difficulty = "Hard";
 
-        leaderboard.SubmitKills(name, finalKills, difficulty);
+        leaderboard.SubmitKills(name, finalKills);
     }
 }
 ```
@@ -180,7 +172,7 @@ Before testing in Unity, confirm the backend works:
 ```bash
 curl -X POST http://localhost:3001/api/leaderboard \
   -H "Content-Type: application/json" \
-  -d '{"name":"UnityPlayer","kills":12345,"difficulty":"Hard"}'
+  -d '{"name":"UnityPlayer","kills":12345}'
 ```
 
 Then check the leaderboard:

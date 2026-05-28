@@ -40,7 +40,7 @@ export default function RecentKills({ events }: { events: RecentEvent[] }) {
                 <span className="text-accent">{fmtKills(ev.kills)}</span>
               </p>
               <p className="text-base font-pixel text-ink-ghost mt-0.5">
-                #{ev.rank} · {ev.difficulty} · {timeAgo(ev.timestamp)}
+                #{ev.rank} · {timeAgo(ev.timestamp)}
               </p>
             </div>
           </div>

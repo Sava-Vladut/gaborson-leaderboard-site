@@ -19,7 +19,7 @@ export default function LeaderboardTable({ players, maxKills, onPlayerClick }: P
   const slice = players.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   return (
-    <div className="card p-4 sm:p-6">
+    <div className="card p-3 sm:p-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-5 px-1">
         <div>
@@ -28,8 +28,7 @@ export default function LeaderboardTable({ players, maxKills, onPlayerClick }: P
           </h2>
           <p className="text-base font-pixel text-ink-ghost mt-0.5">{players.length} ranked</p>
         </div>
-        <div className="hidden sm:flex items-center gap-6 text-base font-pixel text-ink-ghost uppercase tracking-wider pr-1">
-          <span className="w-16 text-right">Change</span>
+        <div className="hidden sm:flex items-center text-base font-pixel text-ink-ghost uppercase tracking-wider pr-1">
           <span className="w-24 text-right">Kills</span>
         </div>
       </div>

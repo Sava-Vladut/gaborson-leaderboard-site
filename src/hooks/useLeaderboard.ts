@@ -11,7 +11,6 @@ function buildRecentEvents(players: Player[]): RecentEvent[] {
     id: `${p.id}-${i}`,
     name: p.name,
     kills: p.kills,
-    difficulty: p.difficulty,
     rank: p.rank,
     action: ACTIONS[i % ACTIONS.length],
     timestamp: new Date(now - i * (Math.random() * 240_000 + 20_000)),
