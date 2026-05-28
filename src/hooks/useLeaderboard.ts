@@ -9,8 +9,9 @@ function buildRecentEvents(players: Player[]): RecentEvent[] {
   const now = Date.now();
   return players.slice(0, 5).map((p, i) => ({
     id: `${p.id}-${i}`,
-    playerName: p.playerName,
-    score: p.score,
+    name: p.name,
+    kills: p.kills,
+    difficulty: p.difficulty,
     rank: p.rank,
     action: ACTIONS[i % ACTIONS.length],
     timestamp: new Date(now - i * (Math.random() * 240_000 + 20_000)),
@@ -22,7 +23,7 @@ export interface LeaderboardState {
   filteredPlayers: Player[];
   topThree: Player[];
   recentEvents: RecentEvent[];
-  maxScore: number;
+  maxKills: number;
   loading: boolean;
   error: string | null;
   isMockData: boolean;
@@ -93,11 +94,11 @@ export function useLeaderboard(): LeaderboardState {
   const filteredPlayers = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return players;
-    return players.filter(p => p.playerName.toLowerCase().includes(q));
+    return players.filter(p => p.name.toLowerCase().includes(q));
   }, [players, searchQuery]);
 
   const topThree   = useMemo(() => players.slice(0, 3), [players]);
-  const maxScore   = useMemo(() => players[0]?.score ?? 1, [players]);
+  const maxKills   = useMemo(() => players[0]?.kills ?? 1, [players]);
   const recentEvents = useMemo(() => buildRecentEvents(players), [players]);
 
   return {
@@ -105,7 +106,7 @@ export function useLeaderboard(): LeaderboardState {
     filteredPlayers,
     topThree,
     recentEvents,
-    maxScore,
+    maxKills,
     loading,
     error,
     isMockData,

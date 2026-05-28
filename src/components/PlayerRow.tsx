@@ -16,13 +16,13 @@ const RANK_STYLE: Record<number, { text: string; bg: string; border: string }> =
 const barColor = (rank: number) =>
   rank === 1 ? '#f0b830' : rank === 2 ? '#9ab0c8' : rank === 3 ? '#c87840' : '#00e0ff99';
 
-interface Props { player: Player; maxScore: number; onClick: (p: Player) => void; }
+interface Props { player: Player; maxKills: number; onClick: (p: Player) => void; }
 
-export default function PlayerRow({ player, maxScore, onClick }: Props) {
+export default function PlayerRow({ player, maxKills, onClick }: Props) {
   const top   = player.rank <= 3;
   const rs    = RANK_STYLE[player.rank];
-  const fill  = Math.max(2, (player.score / maxScore) * 100);
-  const delta = pseudoChange(player.playerName, player.rank);
+  const fill  = Math.max(2, (player.kills / maxKills) * 100);
+  const delta = pseudoChange(player.name, player.rank);
 
   return (
     <div
@@ -49,15 +49,18 @@ export default function PlayerRow({ player, maxScore, onClick }: Props) {
         {player.rank < 10 ? `0${player.rank}` : player.rank}
       </div>
 
-      {/* Name + score bar */}
+      {/* Name + kills bar */}
       <div className="flex-1 min-w-0">
         <p className={`font-pixel text-xl truncate transition-colors duration-200
           ${player.rank === 1 ? 'text-gold' : top ? 'text-ink' : 'text-ink-dim group-hover:text-ink'}`}>
-          {player.playerName}
+          {player.name}
+        </p>
+        <p className="font-pixel text-xs text-ink-ghost uppercase tracking-wider mt-0.5 truncate">
+          {player.difficulty}
         </p>
         <div className="mt-1.5 h-[3px] rounded-full bg-line overflow-hidden">
           <div
-            className="h-full rounded-full score-bar"
+            className="h-full rounded-full kills-bar"
             style={{ '--bar-width': `${fill}%`, backgroundColor: barColor(player.rank) } as React.CSSProperties}
           />
         </div>
@@ -72,10 +75,10 @@ export default function PlayerRow({ player, maxScore, onClick }: Props) {
           : <Minus className="w-4 h-4 text-ink-ghost" />}
       </div>
 
-      {/* Score */}
+      {/* Kills */}
       <div className={`flex-shrink-0 font-pixel text-xl text-right transition-colors duration-200
         ${top ? rs.text : 'text-ink-dim group-hover:text-ink'}`}>
-        {player.score.toLocaleString()}
+        {player.kills.toLocaleString()}
       </div>
     </div>
   );

@@ -1,19 +1,22 @@
 export interface Player {
-  playerName: string;
-  score: number;
+  name: string;
+  kills: number;
+  difficulty: string;
   rank: number;
   id: string;
 }
 
 export interface ApiPlayer {
-  playerName: string;
-  score: number;
+  name: string;
+  kills: number;
+  difficulty?: string;
 }
 
 export interface RecentEvent {
   id: string;
-  playerName: string;
-  score: number;
+  name: string;
+  kills: number;
+  difficulty: string;
   rank: number;
   action: string;
   timestamp: Date;

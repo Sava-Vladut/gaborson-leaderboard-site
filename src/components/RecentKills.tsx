@@ -8,12 +8,12 @@ function timeAgo(d: Date): string {
   return `${Math.floor(mins / 60)}h ago`;
 }
 
-function fmtScore(n: number): string {
+function fmtKills(n: number): string {
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
 }
 
-export default function RecentScores({ events }: { events: RecentEvent[] }) {
+export default function RecentKills({ events }: { events: RecentEvent[] }) {
   return (
     <div className="card p-5">
       <div className="flex items-center gap-2 mb-4">
@@ -33,14 +33,14 @@ export default function RecentScores({ events }: { events: RecentEvent[] }) {
             <TrendingUp className="flex-shrink-0 w-4 h-4 text-success mt-0.5" />
             <div className="min-w-0">
               <p className="text-xl font-pixel leading-snug">
-                <span className="text-ink">{ev.playerName}</span>
+                <span className="text-ink">{ev.name}</span>
                 {' '}
                 <span className="text-ink-ghost">{ev.action}</span>
                 {' '}
-                <span className="text-accent">{fmtScore(ev.score)}</span>
+                <span className="text-accent">{fmtKills(ev.kills)}</span>
               </p>
               <p className="text-base font-pixel text-ink-ghost mt-0.5">
-                #{ev.rank} · {timeAgo(ev.timestamp)}
+                #{ev.rank} · {ev.difficulty} · {timeAgo(ev.timestamp)}
               </p>
             </div>
           </div>

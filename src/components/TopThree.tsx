@@ -54,9 +54,9 @@ function PodiumCard({ player, cls }: { player: Player; cls: string }) {
         {/* Info */}
         <div className="text-center">
           <p className="font-pixel text-xl text-ink leading-tight truncate max-w-[140px]">
-            {player.playerName}
+            {player.name}
           </p>
-          <p className={`font-pixel text-3xl mt-1 ${cfg.rank}`}>{fmt(player.score)}</p>
+          <p className={`font-pixel text-3xl mt-1 ${cfg.rank}`}>{fmt(player.kills)}</p>
         </div>
 
         {/* Rank watermark */}

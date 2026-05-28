@@ -3,7 +3,7 @@ import Header from './components/Header';
 import TopThree from './components/TopThree';
 import LeaderboardTable from './components/LeaderboardTable';
 import SearchBar from './components/SearchBar';
-import RecentScores from './components/RecentScores';
+import RecentKills from './components/RecentKills';
 import PlayerRankDisplay from './components/PlayerRankDisplay';
 import PlayerProfileModal from './components/PlayerProfileModal';
 import LoadingState from './components/LoadingState';
@@ -15,7 +15,7 @@ export default function App() {
     filteredPlayers,
     topThree,
     recentEvents,
-    maxScore,
+    maxKills,
     loading,
     error,
     isMockData,
@@ -80,7 +80,7 @@ export default function App() {
                 <div className="lg:col-span-2 xl:col-span-3">
                   <LeaderboardTable
                     players={filteredPlayers}
-                    maxScore={maxScore}
+                    maxKills={maxKills}
                     onPlayerClick={setSelectedPlayer}
                   />
                 </div>
@@ -88,7 +88,7 @@ export default function App() {
                 {/* Sidebar */}
                 <div className="space-y-4">
                   <PlayerRankDisplay player={searchedPlayer} />
-                  <RecentScores events={recentEvents} />
+                  <RecentKills events={recentEvents} />
                 </div>
               </div>
             </div>

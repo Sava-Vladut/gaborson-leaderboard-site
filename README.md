@@ -1,73 +1,89 @@
-# React + TypeScript + Vite
+# Gaborson Leaderboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React/Vite leaderboard frontend with a small Node.js API for Unity kill submissions.
 
-Currently, two official plugins are available:
+## Run Locally
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Install dependencies:
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Start the backend API:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```bash
+npm run dev:api
+```
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+In another terminal, start the frontend:
+
+```bash
+npm run dev
+```
+
+Open `http://localhost:5173`. The frontend proxies `/api/leaderboard` to the backend at `http://localhost:3001`.
+
+## API
+
+### Get leaderboard
+
+```bash
+curl http://localhost:3001/api/leaderboard
+```
+
+Response:
+
+```json
+[
+  { "name": "NightStalker", "kills": 98750, "difficulty": "Nightmare" },
+  { "name": "Sava", "kills": 87430, "difficulty": "Hard" }
+]
+```
+
+### Submit Kills
+
+```bash
+curl -X POST http://localhost:3001/api/leaderboard \
+  -H "Content-Type: application/json" \
+  -d '{"name":"UnityPlayer","kills":12345,"difficulty":"Hard"}'
+```
+
+If the player already exists, the backend keeps their highest kill count.
+
+## Unity POST Target
+
+Send Unity kills to:
+
+```text
+http://localhost:3001/api/leaderboard
+```
+
+with JSON:
+
+```json
+{
+  "name": "UnityPlayer",
+  "kills": 12345,
+  "difficulty": "Hard"
+}
+```
+
+For a built game, replace `localhost` with your hosted server domain, for example:
+
+```text
+https://yourdomain.com/api/leaderboard
+```
+
+## Data Storage
+
+Kills are stored in `server/leaderboard.json`.
+
+Optional environment variables:
+
+```bash
+PORT=3001 npm run dev:api
+LEADERBOARD_DATA_FILE=/path/to/leaderboard.json npm run dev:api
+LEADERBOARD_MAX_PLAYERS=100 npm run dev:api
+CORS_ORIGIN=https://yourdomain.com npm run dev:api
 ```

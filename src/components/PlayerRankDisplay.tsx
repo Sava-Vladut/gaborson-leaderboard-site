@@ -27,9 +27,12 @@ export default function PlayerRankDisplay({ player }: { player: Player | null })
           #{player.rank}
         </div>
         <div>
-          <p className="font-pixel text-2xl text-ink leading-tight">{player.playerName}</p>
+          <p className="font-pixel text-2xl text-ink leading-tight">{player.name}</p>
           <p className="font-pixel text-accent text-xl mt-1">
-            {player.score.toLocaleString()} pts
+            {player.kills.toLocaleString()} kills
+          </p>
+          <p className="font-pixel text-ink-ghost text-sm uppercase tracking-wider mt-1">
+            {player.difficulty}
           </p>
         </div>
       </div>

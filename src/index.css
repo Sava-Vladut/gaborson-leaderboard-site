@@ -112,12 +112,12 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Animated score bar fill */
+/* Animated kills bar fill */
 @keyframes fillBar {
   from { width: 0%; }
   to   { width: var(--bar-width, 0%); }
 }
-.score-bar { animation: fillBar 0.9s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.kills-bar { animation: fillBar 0.9s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
 
 /* Skeleton shimmer */
 @keyframes shimmer {

@@ -11,15 +11,15 @@ function playerColor(name: string): string {
   return p[h];
 }
 
-function buildHistory(score: number, pts = 18): number[] {
-  let cur = score * 0.5;
+function buildHistory(kills: number, points = 18): number[] {
+  let cur = kills * 0.5;
   const out: number[] = [];
-  for (let i = 0; i < pts; i++) {
-    cur += (Math.random() - 0.26) * score * 0.07;
+  for (let i = 0; i < points; i++) {
+    cur += (Math.random() - 0.26) * kills * 0.07;
     cur = Math.max(10, cur);
     out.push(Math.round(cur));
   }
-  out.push(score);
+  out.push(kills);
   return out;
 }
 
@@ -41,13 +41,13 @@ function pctColor(pct: number): string {
 function Sparkline({ data, color }: { data: number[]; color: string }) {
   const W = 500, H = 110, P = 10;
   const max = Math.max(...data), min = Math.min(...data), rng = max - min || 1;
-  const pts = data.map((v, i) => ({
+  const kills = data.map((v, i) => ({
     x: P + (i / (data.length - 1)) * (W - P * 2),
     y: H - P - ((v - min) / rng) * (H - P * 2),
   }));
-  const line = pts.reduce((d, p, i) => i === 0 ? `M${p.x},${p.y}` : `${d} L${p.x},${p.y}`, '');
-  const area = `${line} L${pts.at(-1)!.x},${H} L${pts[0].x},${H} Z`;
-  const last = pts.at(-1)!;
+  const line = kills.reduce((d, p, i) => i === 0 ? `M${p.x},${p.y}` : `${d} L${p.x},${p.y}`, '');
+  const area = `${line} L${kills.at(-1)!.x},${H} L${kills[0].x},${H} Z`;
+  const last = kills.at(-1)!;
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-28" preserveAspectRatio="none">
@@ -88,21 +88,21 @@ interface Props { player: Player; players: Player[]; onClose: () => void; }
 
 export default function PlayerProfileModal({ player, players, onClose }: Props) {
   const ref     = useRef<HTMLDivElement>(null);
-  const color   = playerColor(player.playerName);
-  const history = useMemo(() => buildHistory(player.score), [player.playerName]);
+  const color   = playerColor(player.name);
+  const history = useMemo(() => buildHistory(player.kills), [player.name]);
   const badge   = RANK_BADGE[player.rank];
 
   const totalPlayers = players.length;
   const topPct       = Math.max(1, Math.ceil((player.rank / totalPlayers) * 100));
   const pc           = pctColor(topPct);
-  const scoreRating  = Math.round((player.score / (players[0]?.score ?? player.score)) * 100);
+  const killsRating  = Math.round((player.kills / (players[0]?.kills ?? player.kills)) * 100);
   const playerAbove  = players[player.rank - 2];
   const playerBelow  = players[player.rank];
-  const gapUp        = playerAbove ? playerAbove.score - player.score : null;
-  const gapDown      = playerBelow ? player.score - playerBelow.score : null;
-  const barMin       = playerBelow?.score ?? 0;
-  const barMax       = playerAbove?.score ?? player.score;
-  const barPos       = barMax > barMin ? ((player.score - barMin) / (barMax - barMin)) * 100 : 100;
+  const gapUp        = playerAbove ? playerAbove.kills - player.kills : null;
+  const gapDown      = playerBelow ? player.kills - playerBelow.kills : null;
+  const barMin       = playerBelow?.kills ?? 0;
+  const barMax       = playerAbove?.kills ?? player.kills;
+  const barPos       = barMax > barMin ? ((player.kills - barMin) / (barMax - barMin)) * 100 : 100;
 
   useEffect(() => {
     const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -112,9 +112,10 @@ export default function PlayerProfileModal({ player, players, onClose }: Props) 
   }, [onClose]);
 
   const stats = [
-    { label: 'Score',       value: fmt(player.score),                        sub: player.score.toLocaleString(),                   cls: 'text-ink'      },
+    { label: 'Kills',       value: fmt(player.kills),                        sub: player.kills.toLocaleString(),                   cls: 'text-ink'      },
     { label: 'Global Rank', value: `#${player.rank}`,                        sub: `of ${totalPlayers} players`,                    cls: 'text-accent'   },
-    { label: 'Score %',     value: `${scoreRating}%`,                        sub: 'of leader score',                               cls: 'text-ink-dim'  },
+    { label: 'Difficulty',  value: player.difficulty,                        sub: 'submitted mode',                                cls: 'text-ink-dim'  },
+    { label: 'Kills %',     value: `${killsRating}%`,                        sub: 'of leader kills',                               cls: 'text-ink-dim'  },
     { label: 'Gap Up',      value: gapUp   != null ? `+${fmt(gapUp)}`   : '—', sub: gapUp   != null ? `to rank #${player.rank - 1}` : 'you lead all',    cls: gapUp   != null ? 'text-danger'      : 'text-gold'      },
     { label: 'Lead',        value: gapDown != null ? `+${fmt(gapDown)}` : '—', sub: gapDown != null ? `over #${player.rank + 1}`   : 'last place',       cls: gapDown != null ? 'text-success'     : 'text-ink-ghost' },
     { label: 'Outranked',   value: `${100 - topPct}%`,                       sub: 'of field behind',                               cls: 'text-ink-dim'  },
@@ -182,7 +183,7 @@ export default function PlayerProfileModal({ player, players, onClose }: Props) 
 
               {badge && (
                 <span
-                  className="inline-flex items-center gap-1.5 text-sm font-pixel px-3 py-1 rounded-lg border"
+                  className="inline-flex items-center gap-1.5 text-xl font-pixel px-3 py-1 rounded-lg border"
                   style={{ color: badge.c, borderColor: `${badge.c}35`, backgroundColor: `${badge.c}12` }}
                 >
                   <badge.Icon className="w-3.5 h-3.5" />
@@ -193,8 +194,8 @@ export default function PlayerProfileModal({ player, players, onClose }: Props) 
 
             {/* Name block */}
             <div className="relative z-10 text-center">
-              <h2 className="font-pixel text-xl text-ink leading-tight">{player.playerName}</h2>
-              <p className="font-pixel text-sm text-ink-ghost mt-1">Rank #{player.rank} of {totalPlayers}</p>
+              <h2 className="font-pixel text-xl text-ink leading-tight">{player.name}</h2>
+              <p className="font-pixel text-xl text-ink-ghost mt-1">Rank #{player.rank} of {totalPlayers}</p>
             </div>
 
             {/* Divider */}
@@ -204,7 +205,7 @@ export default function PlayerProfileModal({ player, players, onClose }: Props) 
             <div className="relative z-10 text-center">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <Shield className="w-4 h-4" style={{ color: pc }} />
-                <p className="text-sm font-pixel uppercase tracking-widest" style={{ color: `${pc}cc` }}>
+                <p className="text-xl font-pixel uppercase tracking-widest" style={{ color: `${pc}cc` }}>
                   Percentile
                 </p>
               </div>
@@ -212,7 +213,7 @@ export default function PlayerProfileModal({ player, players, onClose }: Props) 
                 style={{ color: pc, fontSize: 'clamp(28px, 5vw, 40px)', textShadow: `0 0 20px ${pc}60` }}>
                 TOP {topPct}%
               </p>
-              <p className="text-sm font-pixel text-ink-ghost">
+              <p className="text-xl font-pixel text-ink-ghost">
                 ahead of{' '}
                 <span className="text-ink">{totalPlayers - player.rank}</span>{' '}
                 players
@@ -229,16 +230,16 @@ export default function PlayerProfileModal({ player, players, onClose }: Props) 
                 <div key={s.label} className="bg-elevated rounded-xl p-4 border border-line relative overflow-hidden group hover:border-line-bright transition-colors duration-150">
                   <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"
                     style={{ background: `radial-gradient(ellipse at 50% 0%, ${color}08 0%, transparent 70%)` }} />
-                  <p className="text-xs font-pixel text-ink-ghost uppercase tracking-wider mb-2 leading-none">{s.label}</p>
+                  <p className="text-base font-pixel text-ink-ghost uppercase tracking-wider mb-2 leading-none">{s.label}</p>
                   <p className={`font-pixel text-2xl leading-tight ${s.cls}`}>{s.value}</p>
-                  <p className="text-xs font-pixel text-ink-ghost mt-1.5 leading-none truncate">{s.sub}</p>
+                  <p className="text-base font-pixel text-ink-ghost mt-1.5 leading-none truncate">{s.sub}</p>
                 </div>
               ))}
             </div>
 
             {/* Rank position bar */}
             <div className="bg-elevated rounded-xl p-4 border border-line">
-              <p className="text-sm font-pixel text-ink-ghost uppercase tracking-widest mb-4">Rank Position</p>
+              <p className="text-xl font-pixel text-ink-ghost uppercase tracking-widest mb-4">Rank Position</p>
 
               <div className="relative h-3 rounded-full bg-line mb-5 overflow-visible">
                 {[25, 50, 75].map(t => (
@@ -254,11 +255,11 @@ export default function PlayerProfileModal({ player, players, onClose }: Props) 
                 </div>
               </div>
 
-              <div className="flex items-start justify-between text-sm font-pixel">
+              <div className="flex items-start justify-between text-xl font-pixel">
                 <div className="max-w-[38%]">
                   {playerBelow ? (
                     <>
-                      <p className="text-ink-ghost truncate">#{playerBelow.rank} · {playerBelow.playerName}</p>
+                      <p className="text-ink-ghost truncate">#{playerBelow.rank} · {playerBelow.name}</p>
                       <p className="text-success mt-1 flex items-center gap-0.5">
                         <ChevronDown className="w-3.5 h-3.5" />+{fmt(gapDown!)} lead
                       </p>
@@ -268,14 +269,14 @@ export default function PlayerProfileModal({ player, players, onClose }: Props) 
 
                 <div className="text-center flex-shrink-0 px-2">
                   <div className="w-px h-4 bg-line mx-auto mb-1" />
-                  <p className="font-pixel text-sm" style={{ color }}>{player.playerName[0]}</p>
-                  <p className="text-ink-ghost text-xs mt-0.5">you</p>
+                  <p className="font-pixel text-sm" style={{ color }}>{player.name[0]}</p>
+                  <p className="text-ink-ghost text-base mt-0.5">you</p>
                 </div>
 
                 <div className="text-right max-w-[38%]">
                   {playerAbove ? (
                     <>
-                      <p className="text-ink-ghost truncate">#{playerAbove.rank} · {playerAbove.playerName}</p>
+                      <p className="text-ink-ghost truncate">#{playerAbove.rank} · {playerAbove.name}</p>
                       <p className="text-danger mt-1 flex items-center justify-end gap-0.5">
                         <ChevronUp className="w-3.5 h-3.5" />{fmt(gapUp!)} away
                       </p>
@@ -285,14 +286,14 @@ export default function PlayerProfileModal({ player, players, onClose }: Props) 
               </div>
             </div>
 
-            {/* Score history */}
+            {/* Kills history */}
             <div className="bg-elevated rounded-xl p-4 border border-line">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <TrendingUp className="w-4 h-4 text-accent" />
-                  <p className="text-sm font-pixel text-ink-ghost uppercase tracking-widest">Score History</p>
+                  <p className="text-xl font-pixel text-ink-ghost uppercase tracking-widest">Kills History</p>
                 </div>
-                <span className="text-sm font-pixel text-ink-ghost">
+                <span className="text-xl font-pixel text-ink-ghost">
                   Peak <span className="text-ink">{fmt(Math.max(...history))}</span>
                 </span>
               </div>

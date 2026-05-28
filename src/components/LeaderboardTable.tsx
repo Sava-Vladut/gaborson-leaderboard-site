@@ -7,11 +7,11 @@ const PAGE_SIZE = 10;
 
 interface Props {
   players: Player[];
-  maxScore: number;
+  maxKills: number;
   onPlayerClick: (p: Player) => void;
 }
 
-export default function LeaderboardTable({ players, maxScore, onPlayerClick }: Props) {
+export default function LeaderboardTable({ players, maxKills, onPlayerClick }: Props) {
   const [page, setPage] = useState(0);
   useEffect(() => { setPage(0); }, [players]);
 
@@ -30,7 +30,7 @@ export default function LeaderboardTable({ players, maxScore, onPlayerClick }: P
         </div>
         <div className="hidden sm:flex items-center gap-6 text-base font-pixel text-ink-ghost uppercase tracking-wider pr-1">
           <span className="w-16 text-right">Change</span>
-          <span className="w-24 text-right">Score</span>
+          <span className="w-24 text-right">Kills</span>
         </div>
       </div>
 
@@ -42,7 +42,7 @@ export default function LeaderboardTable({ players, maxScore, onPlayerClick }: P
           </div>
         ) : (
           slice.map(p => (
-            <PlayerRow key={p.id} player={p} maxScore={maxScore} onClick={onPlayerClick} />
+            <PlayerRow key={p.id} player={p} maxKills={maxKills} onClick={onPlayerClick} />
           ))
         )}
       </div>
