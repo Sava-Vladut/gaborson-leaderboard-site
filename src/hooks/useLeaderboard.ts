@@ -1,31 +1,16 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { fetchLeaderboard, getMockLeaderboard } from '../api/leaderboard';
-import type { Player, RecentEvent } from '../types';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { fetchLeaderboard } from '../api/leaderboard';
+import type { Player } from '../types';
 
 const REFRESH_MS = 10_000;
-const ACTIONS = ['achieved', 'scored', 'reached', 'posted'];
-
-function buildRecentEvents(players: Player[]): RecentEvent[] {
-  const now = Date.now();
-  return players.slice(0, 5).map((p, i) => ({
-    id: `${p.id}-${i}`,
-    name: p.name,
-    kills: p.kills,
-    rank: p.rank,
-    action: ACTIONS[i % ACTIONS.length],
-    timestamp: new Date(now - i * (Math.random() * 240_000 + 20_000)),
-  }));
-}
 
 export interface LeaderboardState {
   players: Player[];
   filteredPlayers: Player[];
   topThree: Player[];
-  recentEvents: RecentEvent[];
   maxKills: number;
   loading: boolean;
   error: string | null;
-  isMockData: boolean;
   lastUpdated: Date | null;
   countdown: number;
   searchQuery: string;
@@ -39,14 +24,10 @@ export function useLeaderboard(): LeaderboardState {
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isMockData, setIsMockData] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [countdown, setCountdown] = useState(REFRESH_MS / 1000);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
-
-  const playersRef = useRef<Player[]>([]);
-  useEffect(() => { playersRef.current = players; }, [players]);
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
@@ -54,16 +35,10 @@ export function useLeaderboard(): LeaderboardState {
     try {
       const data = await fetchLeaderboard();
       setPlayers(data);
-      setIsMockData(false);
       setLastUpdated(new Date());
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to fetch leaderboard';
       setError(msg);
-      if (playersRef.current.length === 0) {
-        setPlayers(getMockLeaderboard());
-        setIsMockData(true);
-        setLastUpdated(new Date());
-      }
     } finally {
       setLoading(false);
     }
@@ -98,17 +73,14 @@ export function useLeaderboard(): LeaderboardState {
 
   const topThree   = useMemo(() => players.slice(0, 3), [players]);
   const maxKills   = useMemo(() => players[0]?.kills ?? 1, [players]);
-  const recentEvents = useMemo(() => buildRecentEvents(players), [players]);
 
   return {
     players,
     filteredPlayers,
     topThree,
-    recentEvents,
     maxKills,
     loading,
     error,
-    isMockData,
     lastUpdated,
     countdown,
     searchQuery,

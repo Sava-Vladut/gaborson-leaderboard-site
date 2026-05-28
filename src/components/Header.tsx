@@ -1,11 +1,10 @@
 import { Trophy } from 'lucide-react';
 
 interface HeaderProps {
-  isMockData: boolean;
   lastUpdated: Date | null;
 }
 
-export default function Header({ isMockData, lastUpdated }: HeaderProps) {
+export default function Header({ lastUpdated }: HeaderProps) {
   return (
     <header className="relative px-6 py-7 overflow-hidden">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-px bg-gradient-to-r from-transparent via-accent/40 to-transparent" />
@@ -27,11 +26,6 @@ export default function Header({ isMockData, lastUpdated }: HeaderProps) {
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="text-sm font-pixel text-ink-ghost uppercase tracking-[0.2em]">GABORSON</span>
-              {isMockData && (
-                <span className="text-sm font-pixel text-gold bg-gold/10 border border-gold/25 px-2 py-0.5 rounded">
-                  DEMO
-                </span>
-              )}
             </div>
             <h1 className="font-pixel text-3xl sm:text-5xl tracking-widest leading-none">
               <span className="text-gradient-accent">GLOBAL</span>

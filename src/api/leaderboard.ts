@@ -1,28 +1,5 @@
 import type { ApiPlayer, Player } from '../types';
 
-export const MOCK_PLAYERS: ApiPlayer[] = [
-  { name: 'NightStalker',  kills: 98750 },
-  { name: 'Sava',          kills: 87430 },
-  { name: 'CryptoKnight',  kills: 76200 },
-  { name: 'VoidWalker_99', kills: 65890 },
-  { name: 'PixelReaper',   kills: 54120 },
-  { name: 'ElitePhantom',  kills: 48650 },
-  { name: 'StormBringer',  kills: 42300 },
-  { name: 'NeonPulse',     kills: 38720 },
-  { name: 'IronGhost',     kills: 31450 },
-  { name: 'ArcLight',      kills: 28900 },
-  { name: 'ShadowFox',     kills: 24670 },
-  { name: 'CyberWolf',     kills: 19840 },
-  { name: 'QuantumEdge',   kills: 15200 },
-  { name: 'BlazeFury',     kills: 11380 },
-  { name: 'DarkMatter_X',  kills: 8920  },
-  { name: 'HelixStrike',   kills: 6540  },
-  { name: 'OmegaForce',    kills: 4780  },
-  { name: 'NovaBurst',     kills: 3210  },
-  { name: 'RiftHunter',    kills: 2100  },
-  { name: 'GridRunner',    kills: 980   },
-];
-
 function normalize(data: ApiPlayer[]): Player[] {
   return [...data]
     .sort((a, b) => b.kills - a.kills)
@@ -54,8 +31,4 @@ export async function fetchLeaderboard(): Promise<Player[]> {
     clearTimeout(timer);
     throw err;
   }
-}
-
-export function getMockLeaderboard(): Player[] {
-  return normalize(MOCK_PLAYERS);
 }

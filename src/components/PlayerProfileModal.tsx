@@ -268,18 +268,18 @@ export default function PlayerProfileModal({ player, players, onClose }: Props) 
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 font-pixel">
                 <div className="rounded-lg border border-line bg-surface/45 p-3 min-w-0">
-                  <p className="text-base text-ink-ghost uppercase tracking-wider mb-2">Above</p>
-                  {playerAbove ? (
+                  <p className="text-base text-ink-ghost uppercase tracking-wider mb-2">Below</p>
+                  {playerBelow ? (
                     <>
-                      <p className="text-xl text-ink truncate">#{playerAbove.rank} {playerAbove.name}</p>
-                      <p className="text-base text-danger mt-1 flex items-center gap-1">
-                        <ChevronUp className="w-4 h-4" /> {fmt(gapUp!)} kills ahead
+                      <p className="text-xl text-ink truncate">#{playerBelow.rank} {playerBelow.name}</p>
+                      <p className="text-base text-success mt-1 flex items-center gap-1">
+                        <ChevronDown className="w-4 h-4" /> {fmt(gapDown!)} kills behind
                       </p>
                     </>
                   ) : (
                     <>
-                      <p className="text-xl text-gold">Leader</p>
-                      <p className="text-base text-ink-ghost mt-1">No one is ahead</p>
+                      <p className="text-xl text-ink-ghost">Last</p>
+                      <p className="text-base text-ink-ghost mt-1">No one is behind</p>
                     </>
                   )}
                 </div>
@@ -294,18 +294,18 @@ export default function PlayerProfileModal({ player, players, onClose }: Props) 
                 </div>
 
                 <div className="rounded-lg border border-line bg-surface/45 p-3 min-w-0 text-left sm:text-right">
-                  <p className="text-base text-ink-ghost uppercase tracking-wider mb-2">Below</p>
-                  {playerBelow ? (
+                  <p className="text-base text-ink-ghost uppercase tracking-wider mb-2">Above</p>
+                  {playerAbove ? (
                     <>
-                      <p className="text-xl text-ink truncate">#{playerBelow.rank} {playerBelow.name}</p>
-                      <p className="text-base text-success mt-1 flex items-center gap-1 sm:justify-end">
-                        <ChevronDown className="w-4 h-4" /> {fmt(gapDown!)} kills behind
+                      <p className="text-xl text-ink truncate">#{playerAbove.rank} {playerAbove.name}</p>
+                      <p className="text-base text-danger mt-1 flex items-center gap-1 sm:justify-end">
+                        <ChevronUp className="w-4 h-4" /> {fmt(gapUp!)} kills ahead
                       </p>
                     </>
                   ) : (
                     <>
-                      <p className="text-xl text-ink-ghost">Last</p>
-                      <p className="text-base text-ink-ghost mt-1">No one is behind</p>
+                      <p className="text-xl text-gold">Leader</p>
+                      <p className="text-base text-ink-ghost mt-1">No one is ahead</p>
                     </>
                   )}
                 </div>
