@@ -18,7 +18,7 @@ npm run dev
 
 Open [http://localhost:5173](http://localhost:5173) in your browser.
 
-The app will load with **demo data** automatically if your backend API isn't running yet — you'll see a small **DEMO** badge in the header. This lets you fully test the UI without needing a backend.
+The app reads leaderboard data from the backend API. If the backend is not running, the UI shows a connection error instead of generated demo data.
 
 ### Connecting to a real backend locally
 

@@ -1,6 +1,5 @@
 import { useLeaderboard } from './hooks/useLeaderboard';
 import Header from './components/Header';
-import TopThree from './components/TopThree';
 import LeaderboardTable from './components/LeaderboardTable';
 import SearchBar from './components/SearchBar';
 import PlayerRankDisplay from './components/PlayerRankDisplay';
@@ -12,7 +11,6 @@ export default function App() {
   const {
     players,
     filteredPlayers,
-    topThree,
     maxKills,
     loading,
     error,
@@ -57,11 +55,6 @@ export default function App() {
           </div>
         ) : (
           <>
-            {/* Top-3 Podium — hidden while searching */}
-            {topThree.length >= 3 && !searchQuery && (
-              <TopThree players={topThree} />
-            )}
-
             {/* Search */}
             <SearchBar
               query={searchQuery}
@@ -70,11 +63,11 @@ export default function App() {
               totalCount={players.length}
             />
 
-            {/* Body grid */}
+            {/* Body */}
             <div className="px-6 py-4">
-              <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-5 lg:gap-6">
+              <div className="w-full space-y-5 lg:space-y-6">
                 {/* Leaderboard table */}
-                <div className="lg:col-span-2 xl:col-span-3">
+                <div className="w-full">
                   <LeaderboardTable
                     players={filteredPlayers}
                     maxKills={maxKills}
@@ -82,8 +75,8 @@ export default function App() {
                   />
                 </div>
 
-                {/* Sidebar */}
-                <div className="space-y-4">
+                {/* Search result detail */}
+                <div>
                   <PlayerRankDisplay player={searchedPlayer} />
                 </div>
               </div>

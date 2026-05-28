@@ -79,7 +79,7 @@ export default function TopThree({ players }: { players: Player[] }) {
 
   return (
     <section className="px-6 py-4">
-      <div className="max-w-7xl mx-auto flex items-end justify-center gap-3 sm:gap-5">
+      <div>
         <div className="flex-1 max-w-[195px] podium-2"><PodiumCard player={p2} cls="" /></div>
         <div className="flex-1 max-w-[195px] podium-1"><PodiumCard player={p1} cls="" /></div>
         <div className="flex-1 max-w-[195px] podium-3"><PodiumCard player={p3} cls="" /></div>

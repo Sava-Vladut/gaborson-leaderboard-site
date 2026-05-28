@@ -4,9 +4,10 @@ function normalize(data: ApiPlayer[]): Player[] {
   return [...data]
     .sort((a, b) => b.kills - a.kills)
     .map((p, i) => ({
-      ...p,
+      name: String(p.name ?? '').trim(),
+      kills: Number(p.kills ?? 0),
       rank: i + 1,
-      id: p.name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+      id: `${i + 1}-${String(p.name ?? '').trim().toLowerCase()}`,
     }));
 }
 

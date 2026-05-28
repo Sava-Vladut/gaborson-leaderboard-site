@@ -1,5 +1,5 @@
-import { useEffect, useRef, useMemo, useState } from 'react';
-import { X, Crown, Medal, TrendingUp, ChevronUp, ChevronDown, Shield } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import { X, Crown, Medal, ChevronUp, ChevronDown, Shield } from 'lucide-react';
 import type { Player } from '../types';
 
 /* ─── helpers ─────────────────────────────────────────────── */
@@ -9,22 +9,6 @@ function playerColor(name: string): string {
   let h = 0;
   for (const c of name) h = (h * 31 + c.charCodeAt(0)) % p.length;
   return p[h];
-}
-
-function buildRankHistory(rank: number, totalPlayers: number, points = 18): number[] {
-  let cur = Math.min(totalPlayers, Math.max(1, rank + Math.ceil(totalPlayers * 0.35)));
-  const out: number[] = [];
-
-  for (let i = 0; i < points; i++) {
-    const progress = i / Math.max(1, points - 1);
-    const target = rank + (cur - rank) * (1 - progress);
-    cur = target + (Math.random() - 0.55) * Math.max(1, totalPlayers * 0.08);
-    cur = Math.min(totalPlayers, Math.max(1, cur));
-    out.push(Math.round(cur));
-  }
-
-  out.push(rank);
-  return out;
 }
 
 function fmt(n: number): string {
@@ -38,66 +22,6 @@ function pctColor(pct: number): string {
   if (pct <= 15) return '#00e0ff';
   if (pct <= 30) return '#00ff80';
   return '#7a9bb8';
-}
-
-/* ─── rankline ───────────────────────────────────────────── */
-
-function Rankline({ data, color }: { data: number[]; color: string }) {
-  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-  const W = 500, H = 110, P = 10;
-  const max = Math.max(...data), min = Math.min(...data), rng = max - min || 1;
-  const ranks = data.map((v, i) => ({
-    x: P + (i / (data.length - 1)) * (W - P * 2),
-    y: P + ((v - min) / rng) * (H - P * 2),
-  }));
-  const line = ranks.reduce((d, p, i) => i === 0 ? `M${p.x},${p.y}` : `${d} L${p.x},${p.y}`, '');
-  const area = `${line} L${ranks.at(-1)!.x},${H} L${ranks[0].x},${H} Z`;
-  const activeIndex = hoverIndex ?? data.length - 1;
-  const active = ranks[activeIndex];
-
-  function handlePointerMove(e: React.PointerEvent<SVGSVGElement>) {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * W;
-    const ratio = Math.min(1, Math.max(0, (x - P) / (W - P * 2)));
-    setHoverIndex(Math.round(ratio * (data.length - 1)));
-  }
-
-  return (
-    <svg
-      viewBox={`0 0 ${W} ${H}`}
-      className="w-full h-28 cursor-crosshair"
-      preserveAspectRatio="none"
-      onPointerMove={handlePointerMove}
-      onPointerLeave={() => setHoverIndex(null)}
-    >
-      <defs>
-        <linearGradient id="sparkg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stopColor={color} stopOpacity="0.35" />
-          <stop offset="100%" stopColor={color} stopOpacity="0.02" />
-        </linearGradient>
-        <filter id="glow">
-          <feGaussianBlur stdDeviation="2" result="blur" />
-          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-        </filter>
-      </defs>
-      {[0.25, 0.5, 0.75].map(t => (
-        <line key={t} x1={P} y1={P + t * (H - P * 2)} x2={W - P} y2={P + t * (H - P * 2)}
-          stroke={color} strokeOpacity="0.06" strokeWidth="1" strokeDasharray="4 6" />
-      ))}
-      <path d={area} fill="url(#sparkg)" />
-      <path d={line} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"
-        strokeLinejoin="round" filter="url(#glow)" />
-      <line x1={active.x} y1={P} x2={active.x} y2={H - P} stroke={color} strokeOpacity="0.28" strokeDasharray="3 5" />
-      <circle cx={active.x} cy={active.y} r="6" fill={color} filter="url(#glow)" />
-      <circle cx={active.x} cy={active.y} r="2.75" fill="#04080c" />
-      <g transform={`translate(${Math.min(W - 112, Math.max(8, active.x - 52))}, ${active.y > 46 ? active.y - 42 : active.y + 16})`}>
-        <rect width="104" height="28" rx="5" fill="#08111a" stroke={color} strokeOpacity="0.38" />
-        <text x="52" y="18" textAnchor="middle" fill="#dceeff" fontSize="12" fontFamily="monospace">
-          Rank #{data[activeIndex]}
-        </text>
-      </g>
-    </svg>
-  );
 }
 
 /* ─── config ──────────────────────────────────────────────── */
@@ -118,7 +42,6 @@ export default function PlayerProfileModal({ player, players, onClose }: Props) 
   const badge   = RANK_BADGE[player.rank];
 
   const totalPlayers = players.length;
-  const rankHistory  = useMemo(() => buildRankHistory(player.rank, totalPlayers), [player.rank, totalPlayers]);
   const topPct       = Math.max(1, Math.ceil((player.rank / totalPlayers) * 100));
   const pc           = pctColor(topPct);
   const killsRating  = Math.round((player.kills / (players[0]?.kills ?? player.kills)) * 100);
@@ -310,20 +233,6 @@ export default function PlayerProfileModal({ player, players, onClose }: Props) 
                   )}
                 </div>
               </div>
-            </div>
-
-            {/* Rank history */}
-            <div className="bg-elevated rounded-xl p-4 border border-line">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-accent" />
-                  <p className="text-xl font-pixel text-ink-ghost uppercase tracking-widest">Rank History</p>
-                </div>
-                <span className="text-xl font-pixel text-ink-ghost">
-                  Best <span className="text-ink">#{Math.min(...rankHistory)}</span>
-                </span>
-              </div>
-              <Rankline data={rankHistory} color={color} />
             </div>
 
           </div>
