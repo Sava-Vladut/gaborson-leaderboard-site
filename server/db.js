@@ -25,7 +25,7 @@ db.exec(`
 `);
 
 const listStmt = db.prepare(
-  'SELECT name, kills FROM players ORDER BY kills DESC, name ASC LIMIT ?'
+  'SELECT name, kills FROM players ORDER BY kills DESC, name ASC'
 );
 
 const upsertStmt = db.prepare(`
@@ -39,8 +39,8 @@ const upsertStmt = db.prepare(`
 
 const countStmt = db.prepare('SELECT COUNT(*) AS n FROM players');
 
-export function listPlayers(limit) {
-  return listStmt.all(limit);
+export function listPlayers() {
+  return listStmt.all();
 }
 
 export function upsertPlayer({ name, kills }) {

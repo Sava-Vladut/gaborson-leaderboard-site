@@ -8,7 +8,6 @@ const DATA_FILE = process.env.LEADERBOARD_DATA_FILE ?? join(__dirname, 'leaderbo
 const PORT = Number(process.env.PORT ?? 3001);
 const HOST = process.env.HOST ?? '127.0.0.1';
 const MAX_BODY_BYTES = 1024 * 16;
-const MAX_PLAYERS = Number(process.env.LEADERBOARD_MAX_PLAYERS ?? 100);
 
 function sendJson(res, status, data) {
   const body = JSON.stringify(data);
@@ -63,7 +62,7 @@ function normalizePlayer(input) {
 }
 
 function handleGetLeaderboard(_req, res) {
-  sendJson(res, 200, listPlayers(MAX_PLAYERS));
+  sendJson(res, 200, listPlayers());
 }
 
 async function handlePostLeaderboard(req, res) {
@@ -76,7 +75,7 @@ async function handlePostLeaderboard(req, res) {
   }
 
   upsertPlayer(player);
-  sendJson(res, 201, { ok: true, player, leaderboard: listPlayers(MAX_PLAYERS) });
+  sendJson(res, 201, { ok: true, player, leaderboard: listPlayers() });
 }
 
 const server = createServer(async (req, res) => {
