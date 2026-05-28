@@ -5,7 +5,8 @@
       "Bash(npx tailwindcss *)",
       "Bash(npx tsc *)",
       "Bash(npm run *)",
-      "Bash(Get-ChildItem *)"
+      "Bash(Get-ChildItem *)",
+      "Bash(node *)"
     ]
   }
 }

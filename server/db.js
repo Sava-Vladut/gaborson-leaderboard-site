@@ -1,4 +1,4 @@
-import Database from 'better-sqlite3';
+import { DatabaseSync } from 'node:sqlite';
 import { readFile } from 'node:fs/promises';
 import { existsSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -9,10 +9,10 @@ const DB_FILE = process.env.LEADERBOARD_DB_FILE ?? join(__dirname, 'leaderboard.
 
 mkdirSync(dirname(DB_FILE), { recursive: true });
 
-const db = new Database(DB_FILE);
-db.pragma('journal_mode = WAL');
-db.pragma('synchronous = NORMAL');
-db.pragma('foreign_keys = ON');
+const db = new DatabaseSync(DB_FILE);
+db.exec('PRAGMA journal_mode = WAL');
+db.exec('PRAGMA synchronous = NORMAL');
+db.exec('PRAGMA foreign_keys = ON');
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS players (
@@ -66,8 +66,9 @@ export async function importJsonIfEmpty(jsonPath) {
   if (!Array.isArray(rows) || rows.length === 0) return 0;
 
   const now = Date.now();
-  const insertMany = db.transaction((items) => {
-    for (const item of items) {
+  db.exec('BEGIN');
+  try {
+    for (const item of rows) {
       const name = String(item.name ?? item.playerName ?? '').trim();
       const kills = Number(item.kills ?? item.score);
       if (!name || !Number.isFinite(kills) || kills < 0 || !Number.isInteger(kills)) continue;
@@ -78,8 +79,11 @@ export async function importJsonIfEmpty(jsonPath) {
         updated_at: now,
       });
     }
-  });
-  insertMany(rows);
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
   return countStmt.get().n;
 }
 
