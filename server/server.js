@@ -1,7 +1,7 @@
 import { createServer } from 'node:http';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { DB_FILE, importJsonIfEmpty, listPlayers, upsertPlayer } from './db.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_FILE = process.env.LEADERBOARD_DATA_FILE ?? join(__dirname, 'leaderboard.json');
@@ -43,22 +43,6 @@ async function readJsonBody(req) {
   }
 }
 
-async function readLeaderboard() {
-  try {
-    const raw = await readFile(DATA_FILE, 'utf8');
-    const data = JSON.parse(raw);
-    return Array.isArray(data) ? data : [];
-  } catch (err) {
-    if (err.code === 'ENOENT') return [];
-    throw err;
-  }
-}
-
-async function writeLeaderboard(players) {
-  await mkdir(dirname(DATA_FILE), { recursive: true });
-  await writeFile(DATA_FILE, `${JSON.stringify(players, null, 2)}\n`, 'utf8');
-}
-
 function normalizePlayer(input) {
   const name = String(input.name ?? input.playerName ?? '').trim();
   const kills = Number(input.kills ?? input.score);
@@ -78,20 +62,8 @@ function normalizePlayer(input) {
   return { player: { name, kills } };
 }
 
-function sortPlayers(players) {
-  return players
-    .map((player) => ({
-      name: String(player.name ?? player.playerName ?? '').trim(),
-      kills: Number(player.kills ?? player.score ?? 0),
-    }))
-    .filter((player) => player.name && Number.isFinite(player.kills))
-    .sort((a, b) => b.kills - a.kills || a.name.localeCompare(b.name))
-    .slice(0, MAX_PLAYERS);
-}
-
-async function handleGetLeaderboard(_req, res) {
-  const players = sortPlayers(await readLeaderboard());
-  sendJson(res, 200, players);
+function handleGetLeaderboard(_req, res) {
+  sendJson(res, 200, listPlayers(MAX_PLAYERS));
 }
 
 async function handlePostLeaderboard(req, res) {
@@ -103,21 +75,8 @@ async function handlePostLeaderboard(req, res) {
     return;
   }
 
-  const players = await readLeaderboard();
-  const existing = players.find((p) => p.name.toLowerCase() === player.name.toLowerCase());
-
-  if (existing) {
-    existing.name = player.name;
-    if (player.kills >= existing.kills) {
-      existing.kills = player.kills;
-    }
-  } else {
-    players.push(player);
-  }
-
-  const sorted = sortPlayers(players);
-  await writeLeaderboard(sorted);
-  sendJson(res, 201, { ok: true, player, leaderboard: sorted });
+  upsertPlayer(player);
+  sendJson(res, 201, { ok: true, player, leaderboard: listPlayers(MAX_PLAYERS) });
 }
 
 const server = createServer(async (req, res) => {
@@ -135,7 +94,7 @@ const server = createServer(async (req, res) => {
     }
 
     if (url.pathname === '/api/leaderboard' && req.method === 'GET') {
-      await handleGetLeaderboard(req, res);
+      handleGetLeaderboard(req, res);
       return;
     }
 
@@ -152,6 +111,11 @@ const server = createServer(async (req, res) => {
   }
 });
 
+const imported = await importJsonIfEmpty(DATA_FILE);
+if (imported > 0) {
+  console.log(`Imported ${imported} rows from ${DATA_FILE} into ${DB_FILE}`);
+}
+
 server.listen(PORT, HOST, () => {
-  console.log(`Leaderboard API listening on http://${HOST}:${PORT}`);
+  console.log(`Leaderboard API listening on http://${HOST}:${PORT} (db: ${DB_FILE})`);
 });

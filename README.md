@@ -76,13 +76,16 @@ https://yourdomain.com/api/leaderboard
 
 ## Data Storage
 
-Kills are stored in `server/leaderboard.json`.
+Kills are stored in `server/leaderboard.db` (SQLite via `better-sqlite3`). On first boot, if the DB is empty and `server/leaderboard.json` exists, all rows are imported automatically — the JSON file is left in place as a human-readable backup.
+
+The schema and tracked fields are documented in [`values.md`](./values.md).
 
 Optional environment variables:
 
 ```bash
 PORT=3001 npm run dev:api
-LEADERBOARD_DATA_FILE=/path/to/leaderboard.json npm run dev:api
+LEADERBOARD_DB_FILE=/path/to/leaderboard.db npm run dev:api
+LEADERBOARD_DATA_FILE=/path/to/leaderboard.json npm run dev:api   # only used for first-boot import
 LEADERBOARD_MAX_PLAYERS=100 npm run dev:api
 CORS_ORIGIN=https://yourdomain.com npm run dev:api
 ```
