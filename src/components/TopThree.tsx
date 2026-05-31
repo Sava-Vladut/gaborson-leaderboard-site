@@ -37,13 +37,22 @@ const CFG = {
   },
 } as const;
 
-function PodiumCard({ player, cls }: { player: Player; cls: string }) {
+function PodiumCard({ player, cls, onClick }: { player: Player; cls: string; onClick: (p: Player) => void }) {
   const cfg = CFG[player.rank as 1 | 2 | 3];
   const { Icon } = cfg;
 
   return (
-    <div className={`flex flex-col items-center ${cls}`}>
-      <div className={`relative w-full max-w-[195px] rounded-xl border ${cfg.card} ${cfg.extra} p-5 flex flex-col items-center gap-3 bracket`}>
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onClick(player)}
+      onKeyDown={e => e.key === 'Enter' && onClick(player)}
+      className={`group flex flex-col items-center cursor-pointer outline-none
+        transition-transform duration-200 hover:-translate-y-1
+        focus-visible:ring-1 focus-visible:ring-accent/50 rounded-xl ${cls}`}
+    >
+      <div className={`relative w-full max-w-[195px] rounded-xl border ${cfg.card} ${cfg.extra} p-5 flex flex-col items-center gap-3 bracket
+        transition-colors duration-200`}>
 
         {/* Badge */}
         <span className={`flex items-center gap-1.5 text-base font-pixel uppercase tracking-widest border px-2 py-1 rounded-md ${cfg.badge}`}>
@@ -73,16 +82,21 @@ function PodiumCard({ player, cls }: { player: Player; cls: string }) {
   );
 }
 
-export default function TopThree({ players }: { players: Player[] }) {
+interface TopThreeProps {
+  players: Player[];
+  onPlayerClick: (p: Player) => void;
+}
+
+export default function TopThree({ players, onPlayerClick }: TopThreeProps) {
   if (players.length < 3) return null;
   const [p1, p2, p3] = players;
 
   return (
     <section className="px-6 py-4">
-      <div>
-        <div className="flex-1 max-w-[195px] podium-2"><PodiumCard player={p2} cls="" /></div>
-        <div className="flex-1 max-w-[195px] podium-1"><PodiumCard player={p1} cls="" /></div>
-        <div className="flex-1 max-w-[195px] podium-3"><PodiumCard player={p3} cls="" /></div>
+      <div className="flex items-end justify-center gap-3 sm:gap-4 max-w-3xl mx-auto">
+        <div className="flex-1 max-w-[195px] podium-2"><PodiumCard player={p2} cls="" onClick={onPlayerClick} /></div>
+        <div className="flex-1 max-w-[195px] podium-1"><PodiumCard player={p1} cls="" onClick={onPlayerClick} /></div>
+        <div className="flex-1 max-w-[195px] podium-3"><PodiumCard player={p3} cls="" onClick={onPlayerClick} /></div>
       </div>
     </section>
   );

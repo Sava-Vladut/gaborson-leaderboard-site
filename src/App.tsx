@@ -1,5 +1,6 @@
 import { useLeaderboard } from './hooks/useLeaderboard';
 import Header from './components/Header';
+import TopThree from './components/TopThree';
 import LeaderboardTable from './components/LeaderboardTable';
 import SearchBar from './components/SearchBar';
 import PlayerRankDisplay from './components/PlayerRankDisplay';
@@ -54,6 +55,11 @@ export default function App() {
           </div>
         ) : (
           <>
+            {/* Podium — global top 3 */}
+            {!searchQuery.trim() && (
+              <TopThree players={players} onPlayerClick={setSelectedPlayer} />
+            )}
+
             {/* Search */}
             <SearchBar
               query={searchQuery}

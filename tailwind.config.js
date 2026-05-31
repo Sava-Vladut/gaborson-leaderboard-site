@@ -20,9 +20,6 @@ export default {
         danger: '#ff3050',
       },
       fontFamily: {
-        display: ['Orbitron', 'monospace'],
-        body: ['Rajdhani', 'sans-serif'],
-        mono: ['"JetBrains Mono"', '"Fira Code"', 'monospace'],
         pixel: ['"PixelPurl"', 'monospace'],
       },
       boxShadow: {
