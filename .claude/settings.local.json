@@ -6,7 +6,10 @@
       "Bash(npx tsc *)",
       "Bash(npm run *)",
       "Bash(Get-ChildItem *)",
-      "Bash(node *)"
+      "Bash(node *)",
+      "PowerShell(Stop-Process *)",
+      "PowerShell(npx tsc -b 2>&1 | Select-Object -First 30; \"TSC_EXIT=$LASTEXITCODE\")",
+      "PowerShell(node -e \"const db=new\\(require\\('node:sqlite'\\).DatabaseSync\\)\\('server/leaderboard.db'\\);const r=db.prepare\\('DELETE FROM players WHERE name_key IN \\(?,?\\)'\\).run\\('dmgtest','legacyguy'\\);console.log\\('deleted',r.changes,'test rows'\\)\")"
     ]
   }
 }

@@ -6,6 +6,8 @@ function normalize(data: ApiPlayer[]): Player[] {
     .map((p, i) => ({
       name: String(p.name ?? '').trim(),
       kills: Number(p.kills ?? 0),
+      damageDealt: Number(p.damageDealt ?? 0),
+      damageReceived: Number(p.damageReceived ?? 0),
       rank: i + 1,
       id: `${i + 1}-${String(p.name ?? '').trim().toLowerCase()}`,
     }));

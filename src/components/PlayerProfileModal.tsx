@@ -59,6 +59,8 @@ export default function PlayerProfileModal({ player, players, onClose }: Props) 
 
   const stats = [
     { label: 'Kills',       value: fmt(player.kills),                        sub: player.kills.toLocaleString(),                   cls: 'text-ink'      },
+    { label: 'Damage Dealt',  value: fmt(player.damageDealt),                sub: player.damageDealt.toLocaleString(),             cls: 'text-gold'     },
+    { label: 'Damage Taken',  value: fmt(player.damageReceived),             sub: player.damageReceived.toLocaleString(),          cls: 'text-danger'   },
     { label: 'Global Rank', value: `#${player.rank}`,                        sub: `of ${totalPlayers} players`,                    cls: 'text-accent'   },
     { label: 'Kills %',     value: `${killsRating}%`,                        sub: 'of leader kills',                               cls: 'text-ink-dim'  },
     { label: 'Outranked',   value: `${100 - topPct}%`,                       sub: 'of field behind',                               cls: 'text-ink-dim'  },
@@ -175,7 +177,6 @@ export default function PlayerProfileModal({ player, players, onClose }: Props) 
                     style={{ background: `radial-gradient(ellipse at 50% 0%, ${color}08 0%, transparent 70%)` }} />
                   <p className="text-base font-pixel text-ink-ghost uppercase tracking-wider mb-2 leading-none">{s.label}</p>
                   <p className={`font-pixel text-2xl leading-tight ${s.cls}`}>{s.value}</p>
-                  <p className="text-base font-pixel text-ink-ghost mt-1.5 leading-none truncate">{s.sub}</p>
                 </div>
               ))}
             </div>

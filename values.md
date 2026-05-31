@@ -8,6 +8,8 @@ This file is the canonical list of per-player values stored by the leaderboard. 
 |---------|---------|----------|---------|-----------------------------------------------------------|-------------------|-----------|-------------------------------|
 | `name`  | string  | yes      | —       | trimmed; non-empty; ≤ 40 chars; case-insensitive match    | `players.name` (+ `name_key` PK) | `name`    | `ApiPlayer.name`, `Player.name` |
 | `kills` | integer | yes      | `0`     | finite; non-negative; integer; **monotonic** (only increases on update) | `players.kills`   | `kills`   | `ApiPlayer.kills`, `Player.kills` |
+| `damageDealt`    | integer | no | `0` | finite; non-negative; integer; **cumulative** (each POST is added to the stored total) | `players.damage_dealt`    | `damageDealt`    | `ApiPlayer.damageDealt`, `Player.damageDealt`       |
+| `damageReceived` | integer | no | `0` | finite; non-negative; integer; **cumulative** (each POST is added to the stored total) | `players.damage_received` | `damageReceived` | `ApiPlayer.damageReceived`, `Player.damageReceived` |
 
 ### Computed fields (frontend only — not stored)
 

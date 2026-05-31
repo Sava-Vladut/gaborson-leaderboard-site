@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import PlayerRow from './PlayerRow';
 import type { Player } from '../types';
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 20;
 
 interface Props {
   players: Player[];

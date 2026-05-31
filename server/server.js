@@ -58,7 +58,18 @@ function normalizePlayer(input) {
     return { error: 'kills must be a non-negative integer' };
   }
 
-  return { player: { name, kills } };
+  // Optional damage stats — default to 0 when omitted by older clients.
+  const damageDealt = input.damageDealt === undefined ? 0 : Number(input.damageDealt);
+  if (!Number.isFinite(damageDealt) || damageDealt < 0 || !Number.isInteger(damageDealt)) {
+    return { error: 'damageDealt must be a non-negative integer' };
+  }
+
+  const damageReceived = input.damageReceived === undefined ? 0 : Number(input.damageReceived);
+  if (!Number.isFinite(damageReceived) || damageReceived < 0 || !Number.isInteger(damageReceived)) {
+    return { error: 'damageReceived must be a non-negative integer' };
+  }
+
+  return { player: { name, kills, damageDealt, damageReceived } };
 }
 
 function handleGetLeaderboard(_req, res) {

@@ -7,9 +7,19 @@ Current entry shape:
 ```json
 {
   "name": "UnityPlayer",
-  "kills": 12345
+  "kills": 12345,
+  "damageDealt": 456789,
+  "damageReceived": 234567
 }
 ```
+
+`damageDealt` and `damageReceived` are optional (they default to `0`), so existing clients that only send `name` and `kills` keep working.
+
+> **Important — damage is cumulative (all-time).** The backend **adds** every `damageDealt` / `damageReceived` you send onto the player's stored total. `kills` is different: the backend keeps the **highest** value submitted. So:
+> - **Damage:** send the amount from **that match only** (the delta since your last submission). The server sums them into an all-time total.
+> - **Kills:** send the player's **best/final kill count**, the same as before.
+>
+> Sending a lifetime damage total every match would double-count (e.g. 500 then 800 stored = 1300). Send per-match damage so the totals add up correctly.
 
 ## Backend URL
 
@@ -61,7 +71,9 @@ with JSON:
 ```json
 {
   "name": "UnityPlayer",
-  "kills": 12345
+  "kills": 12345,
+  "damageDealt": 456789,
+  "damageReceived": 234567
 }
 ```
 
@@ -69,7 +81,9 @@ Rules:
 
 - `name` is required.
 - `kills` must be a non-negative whole number.
-- If the player already exists, the backend keeps their highest kill count.
+- `damageDealt` and `damageReceived` are optional non-negative whole numbers (default `0`).
+- If the player already exists: `kills` keeps the **highest** value submitted; `damageDealt` and `damageReceived` are **added** to the stored totals.
+- Send **per-match** damage (the delta), not a lifetime total — the server accumulates it for you.
 
 ## Get Leaderboard
 
@@ -85,7 +99,9 @@ Response example:
 [
   {
     "name": "UnityPlayer",
-    "kills": 12345
+    "kills": 12345,
+    "damageDealt": 456789,
+    "damageReceived": 234567
   }
 ]
 ```
@@ -109,19 +125,23 @@ public class LeaderboardClient : MonoBehaviour
     {
         public string name;
         public int kills;
+        public int damageDealt;
+        public int damageReceived;
     }
 
-    public void SubmitKills(string name, int kills)
+    public void SubmitKills(string name, int kills, int damageDealt, int damageReceived)
     {
-        StartCoroutine(PostKills(name, kills));
+        StartCoroutine(PostKills(name, kills, damageDealt, damageReceived));
     }
 
-    private IEnumerator PostKills(string name, int kills)
+    private IEnumerator PostKills(string name, int kills, int damageDealt, int damageReceived)
     {
         KillsPayload payload = new KillsPayload
         {
             name = name,
-            kills = kills
+            kills = kills,
+            damageDealt = damageDealt,
+            damageReceived = damageReceived
         };
 
         string json = JsonUtility.ToJson(payload);
@@ -148,22 +168,40 @@ public class LeaderboardClient : MonoBehaviour
 
 ## Example Usage
 
-Attach `LeaderboardClient` to a GameObject, then call:
+Attach `LeaderboardClient` to a GameObject. Track the damage the player does and takes **during the current match**, then submit those per-match amounts when the match ends. The backend adds them onto the player's all-time totals.
 
 ```csharp
 public class GameOverExample : MonoBehaviour
 {
     [SerializeField] private LeaderboardClient leaderboard;
 
+    // Accumulate these as the match plays.
+    private int killsThisMatch;
+    private int damageDealtThisMatch;
+    private int damageReceivedThisMatch;
+
+    // Call these from your combat code:
+    public void OnEnemyKilled()                  => killsThisMatch++;
+    public void OnDamageDealt(int amount)        => damageDealtThisMatch += amount;
+    public void OnDamageReceived(int amount)     => damageReceivedThisMatch += amount;
+
     public void OnGameOver()
     {
         string name = "Player1";
-        int finalKills = 12345;
 
-        leaderboard.SubmitKills(name, finalKills);
+        // Send THIS match's numbers. kills = best count (server keeps the max);
+        // damage = this match only (server adds it to the all-time total).
+        leaderboard.SubmitKills(name, killsThisMatch, damageDealtThisMatch, damageReceivedThisMatch);
+
+        // Reset for the next match so you don't submit the same damage twice.
+        killsThisMatch = 0;
+        damageDealtThisMatch = 0;
+        damageReceivedThisMatch = 0;
     }
 }
 ```
+
+> Damage values must be whole numbers. If your game tracks damage as a `float`, round before sending: `Mathf.RoundToInt(damageThisMatch)`.
 
 ## Test with curl
 
@@ -172,7 +210,7 @@ Before testing in Unity, confirm the backend works:
 ```bash
 curl -X POST http://localhost:3001/api/leaderboard \
   -H "Content-Type: application/json" \
-  -d '{"name":"UnityPlayer","kills":12345}'
+  -d '{"name":"UnityPlayer","kills":12345,"damageDealt":456789,"damageReceived":234567}'
 ```
 
 Then check the leaderboard:

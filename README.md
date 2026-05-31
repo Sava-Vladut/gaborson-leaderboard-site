@@ -36,8 +36,8 @@ Response:
 
 ```json
 [
-  { "name": "NightStalker", "kills": 98750 },
-  { "name": "Sava", "kills": 87430 }
+  { "name": "NightStalker", "kills": 98750, "damageDealt": 1840200, "damageReceived": 962100 },
+  { "name": "Sava", "kills": 87430, "damageDealt": 1530900, "damageReceived": 1102400 }
 ]
 ```
 
@@ -46,10 +46,10 @@ Response:
 ```bash
 curl -X POST http://localhost:3001/api/leaderboard \
   -H "Content-Type: application/json" \
-  -d '{"name":"UnityPlayer","kills":12345}'
+  -d '{"name":"UnityPlayer","kills":12345,"damageDealt":456789,"damageReceived":234567}'
 ```
 
-If the player already exists, the backend keeps their highest kill count.
+`damageDealt` and `damageReceived` are optional (default `0`) — older clients can keep sending just `name` and `kills`. If the player already exists: `kills` keeps the **highest** value submitted, while `damageDealt` and `damageReceived` are **added** to the running total (all-time cumulative). So send each match's damage, not a lifetime number.
 
 ## Unity POST Target
 
@@ -64,7 +64,9 @@ with JSON:
 ```json
 {
   "name": "UnityPlayer",
-  "kills": 12345
+  "kills": 12345,
+  "damageDealt": 456789,
+  "damageReceived": 234567
 }
 ```
 
@@ -76,7 +78,7 @@ https://yourdomain.com/api/leaderboard
 
 ## Data Storage
 
-Kills are stored in `server/leaderboard.db` (SQLite via `better-sqlite3`). On first boot, if the DB is empty and `server/leaderboard.json` exists, all rows are imported automatically — the JSON file is left in place as a human-readable backup.
+Kills are stored in `server/leaderboard.db` (SQLite via Node's built-in `node:sqlite`). On first boot, if the DB is empty and `server/leaderboard.json` exists, all rows are imported automatically — the JSON file is left in place as a human-readable backup.
 
 The schema and tracked fields are documented in [`values.md`](./values.md).
 
