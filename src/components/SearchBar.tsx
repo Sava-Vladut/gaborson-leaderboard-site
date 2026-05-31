@@ -3,11 +3,9 @@ import { Search, X } from 'lucide-react';
 interface Props {
   query: string;
   onChange: (q: string) => void;
-  resultCount: number;
-  totalCount: number;
 }
 
-export default function SearchBar({ query, onChange, resultCount, totalCount }: Props) {
+export default function SearchBar({ query, onChange }: Props) {
   return (
     <div className="px-6 py-3">
       <div className="w-full">
@@ -32,14 +30,6 @@ export default function SearchBar({ query, onChange, resultCount, totalCount }: 
             </button>
           )}
         </div>
-
-        {query && (
-          <p className="mt-2 text-base font-pixel text-ink-ghost px-1">
-            {resultCount === 0
-              ? `No players match "${query}"`
-              : `${resultCount} of ${totalCount} players`}
-          </p>
-        )}
       </div>
     </div>
   );

@@ -12,6 +12,7 @@ export default function App() {
   const {
     players,
     filteredPlayers,
+    totalPlayers,
     maxMetricValue,
     sortMetric,
     setSortMetric,
@@ -69,8 +70,6 @@ export default function App() {
             <SearchBar
               query={searchQuery}
               onChange={setSearchQuery}
-              resultCount={filteredPlayers.length}
-              totalCount={players.length}
             />
 
             {/* Body */}
@@ -99,7 +98,7 @@ export default function App() {
 
       <StatusBar
         onRefresh={refresh}
-        totalPlayers={players.length}
+        totalPlayers={totalPlayers || players.length}
         error={error}
       />
 
@@ -108,6 +107,7 @@ export default function App() {
         <PlayerProfileModal
           player={liveSelectedPlayer}
           players={players}
+          totalPlayers={totalPlayers || players.length}
           onClose={() => setSelectedPlayer(null)}
         />
       )}

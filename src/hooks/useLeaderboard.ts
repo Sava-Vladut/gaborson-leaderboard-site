@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { fetchLeaderboard } from '../api/leaderboard';
 import type { Player, SortMetric } from '../types';
 
@@ -6,6 +6,7 @@ export interface LeaderboardState {
   players: Player[];
   filteredPlayers: Player[];
   topThree: Player[];
+  totalPlayers: number;
   maxMetricValue: number;
   sortMetric: SortMetric;
   setSortMetric: (m: SortMetric) => void;
@@ -21,31 +22,22 @@ export interface LeaderboardState {
 
 export function useLeaderboard(): LeaderboardState {
   const [players, setPlayers] = useState<Player[]>([]);
+  const [totalPlayers, setTotalPlayers] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMetric, setSortMetric] = useState<SortMetric>('kills');
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
-  const previousRanksRef = useRef<Map<string, number>>(new Map());
+  const trimmedSearchQuery = searchQuery.trim();
 
-  const load = useCallback(async (isRefresh = false) => {
+  const load = useCallback(async (isRefresh = false, search = trimmedSearchQuery) => {
     if (!isRefresh) setLoading(true);
     setError(null);
     try {
-      const data = await fetchLeaderboard();
-      const previousRanks = previousRanksRef.current;
-      const nextPlayers = data.map(player => {
-        const key = player.name.toLowerCase();
-        const previousRank = previousRanks.get(key);
-        return {
-          ...player,
-          rankChange: previousRank === undefined ? 0 : previousRank - player.rank,
-        };
-      });
-
-      previousRanksRef.current = new Map(data.map(player => [player.name.toLowerCase(), player.rank]));
-      setPlayers(nextPlayers);
+      const data = await fetchLeaderboard(search);
+      setPlayers(data.players);
+      setTotalPlayers(data.totalPlayers);
       setLastUpdated(new Date());
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to fetch leaderboard';
@@ -53,7 +45,7 @@ export function useLeaderboard(): LeaderboardState {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [trimmedSearchQuery]);
 
   // Initial fetch
   useEffect(() => {
@@ -62,13 +54,11 @@ export function useLeaderboard(): LeaderboardState {
   }, [load]);
 
   const filteredPlayers = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    const base = q ? players.filter(p => p.name.toLowerCase().includes(q)) : players;
-    return [...base].sort((a, b) => {
+    return [...players].sort((a, b) => {
       const diff = b[sortMetric] - a[sortMetric];
       return diff || a.rank - b.rank;
     });
-  }, [players, searchQuery, sortMetric]);
+  }, [players, sortMetric]);
 
   const topThree   = useMemo(() => players.slice(0, 3), [players]);
   const maxMetricValue = useMemo(
@@ -80,6 +70,7 @@ export function useLeaderboard(): LeaderboardState {
     players,
     filteredPlayers,
     topThree,
+    totalPlayers,
     maxMetricValue,
     sortMetric,
     setSortMetric,

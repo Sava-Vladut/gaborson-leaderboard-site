@@ -49,9 +49,36 @@ if (!existingCols.includes('damage_received')) {
   db.exec('ALTER TABLE players ADD COLUMN damage_received INTEGER NOT NULL DEFAULT 0 CHECK (damage_received >= 0)');
 }
 
-const listStmt = db.prepare(
-  'SELECT name, kills, damage_dealt AS damageDealt, damage_received AS damageReceived FROM players ORDER BY kills DESC, name ASC'
-);
+const listStmt = db.prepare(`
+  SELECT
+    nameKey,
+    name,
+    kills,
+    damageDealt,
+    damageReceived,
+    rank
+  FROM (
+    SELECT
+      name_key AS nameKey,
+      name,
+      kills,
+      damage_dealt AS damageDealt,
+      damage_received AS damageReceived,
+      ROW_NUMBER() OVER (ORDER BY kills DESC, name ASC) AS rank
+    FROM players
+  )
+  WHERE @search = '' OR lower(name) LIKE @search_like
+  ORDER BY rank ASC
+  LIMIT @limit
+`);
+
+const previousRankStmt = db.prepare(`
+  SELECT rank
+  FROM placement_history
+  WHERE name_key = @name_key
+  ORDER BY captured_at DESC, id DESC
+  LIMIT 1 OFFSET 1
+`);
 
 const listRowsStmt = db.prepare(`
   SELECT
@@ -121,8 +148,108 @@ const historyStmt = db.prepare(`
   LIMIT @limit
 `);
 
-export function listPlayers() {
-  return listStmt.all();
+const playerContextStmt = db.prepare(`
+  WITH ranked AS (
+    SELECT
+      name,
+      kills,
+      damage_dealt AS damageDealt,
+      damage_received AS damageReceived,
+      ROW_NUMBER() OVER (ORDER BY kills DESC, name ASC) AS rank,
+      COUNT(*) OVER () AS totalPlayers,
+      FIRST_VALUE(kills) OVER (ORDER BY kills DESC, name ASC) AS leaderKills
+    FROM players
+  ),
+  target AS (
+    SELECT rank, totalPlayers, leaderKills
+    FROM ranked
+    WHERE lower(name) = @name_key
+  )
+  SELECT
+    'player' AS kind,
+    ranked.name,
+    ranked.kills,
+    ranked.damageDealt,
+    ranked.damageReceived,
+    ranked.rank,
+    target.totalPlayers,
+    target.leaderKills
+  FROM ranked, target
+  WHERE ranked.rank = target.rank
+  UNION ALL
+  SELECT
+    'above' AS kind,
+    ranked.name,
+    ranked.kills,
+    ranked.damageDealt,
+    ranked.damageReceived,
+    ranked.rank,
+    target.totalPlayers,
+    target.leaderKills
+  FROM ranked, target
+  WHERE ranked.rank = target.rank - 1
+  UNION ALL
+  SELECT
+    'below' AS kind,
+    ranked.name,
+    ranked.kills,
+    ranked.damageDealt,
+    ranked.damageReceived,
+    ranked.rank,
+    target.totalPlayers,
+    target.leaderKills
+  FROM ranked, target
+  WHERE ranked.rank = target.rank + 1
+`);
+
+export function listPlayers({ search = '', limit = 100 } = {}) {
+  const q = String(search ?? '').trim().toLowerCase();
+  return listStmt.all({
+    search: q,
+    search_like: `%${q}%`,
+    limit: Math.max(1, Math.min(1000, Number(limit) || 100)),
+  }).map((player) => {
+    const previous = previousRankStmt.get({
+      name_key: player.nameKey,
+    });
+
+    return {
+      name: player.name,
+      kills: player.kills,
+      damageDealt: player.damageDealt,
+      damageReceived: player.damageReceived,
+      rank: player.rank,
+      rankChange: previous ? previous.rank - player.rank : 0,
+    };
+  });
+}
+
+export function countPlayers() {
+  return countStmt.get().n;
+}
+
+export function getPlayerContext(name) {
+  const rows = playerContextStmt.all({
+    name_key: String(name ?? '').trim().toLowerCase(),
+  });
+  const player = rows.find((row) => row.kind === 'player');
+  if (!player) return null;
+
+  const toPlayer = (row) => row ? ({
+    name: row.name,
+    kills: row.kills,
+    damageDealt: row.damageDealt,
+    damageReceived: row.damageReceived,
+    rank: row.rank,
+  }) : null;
+
+  return {
+    totalPlayers: player.totalPlayers,
+    leaderKills: player.leaderKills,
+    player: toPlayer(player),
+    above: toPlayer(rows.find((row) => row.kind === 'above')),
+    below: toPlayer(rows.find((row) => row.kind === 'below')),
+  };
 }
 
 export function upsertPlayer({ name, kills, damageDealt = 0, damageReceived = 0 }) {

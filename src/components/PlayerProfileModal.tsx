@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { X, Crown, Medal, ChevronUp, ChevronDown, Shield } from 'lucide-react';
-import type { Player } from '../types';
+import { fetchPlayerContext } from '../api/leaderboard';
+import type { Player, PlayerContext } from '../types';
 import PlacementHistoryChart from './PlacementHistoryChart';
 
 /* ─── helpers ─────────────────────────────────────────────── */
@@ -35,20 +36,22 @@ const RANK_BADGE: Record<number, { Icon: typeof Crown; label: string; c: string 
 
 /* ─── component ───────────────────────────────────────────── */
 
-interface Props { player: Player; players: Player[]; onClose: () => void; }
+interface Props { player: Player; players: Player[]; totalPlayers: number; onClose: () => void; }
 
-export default function PlayerProfileModal({ player, players, onClose }: Props) {
+export default function PlayerProfileModal({ player, players, totalPlayers: fallbackTotalPlayers, onClose }: Props) {
   const ref     = useRef<HTMLDivElement>(null);
+  const [context, setContext] = useState<PlayerContext | null>(null);
+  const activeContext = context?.player.name.toLowerCase() === player.name.toLowerCase() ? context : null;
   const color   = playerColor(player.name);
   const badge   = RANK_BADGE[player.rank];
 
-  const totalPlayers = players.length;
+  const totalPlayers = activeContext?.totalPlayers ?? fallbackTotalPlayers;
   const topPct       = Math.max(1, Math.ceil((player.rank / totalPlayers) * 100));
   const pc           = pctColor(topPct);
-  const leaderKills  = players[0]?.kills ?? 0;
+  const leaderKills  = activeContext?.leaderKills ?? players[0]?.kills ?? 0;
   const killsRating  = leaderKills > 0 ? Math.round((player.kills / leaderKills) * 100) : 0;
-  const playerAbove  = players[player.rank - 2];
-  const playerBelow  = players[player.rank];
+  const playerAbove  = activeContext?.above ?? players.find(p => p.rank === player.rank - 1);
+  const playerBelow  = activeContext?.below ?? players.find(p => p.rank === player.rank + 1);
   const gapUp        = playerAbove ? playerAbove.kills - player.kills : null;
   const gapDown      = playerBelow ? player.kills - playerBelow.kills : null;
 
@@ -58,6 +61,21 @@ export default function PlayerProfileModal({ player, players, onClose }: Props) 
     document.body.style.overflow = 'hidden';
     return () => { document.removeEventListener('keydown', esc); document.body.style.overflow = ''; };
   }, [onClose]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchPlayerContext(player.name)
+      .then(nextContext => {
+        if (!cancelled) setContext(nextContext);
+      })
+      .catch(() => {
+        if (!cancelled) setContext(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [player.name]);
 
   const stats = [
     { label: 'Kills',       value: fmt(player.kills),                        sub: player.kills.toLocaleString(),                   cls: 'text-ink'      },

@@ -40,7 +40,6 @@ export default function LeaderboardTable({
           <h2 className="font-pixel text-lg text-ink-dim uppercase tracking-widest">
             All Players
           </h2>
-          <p className="text-base font-pixel text-ink-ghost mt-0.5">{players.length} ranked</p>
         </div>
         <div className="flex flex-col items-stretch gap-2 sm:items-end">
           <div className="flex rounded-lg border border-line bg-elevated/70 p-1">

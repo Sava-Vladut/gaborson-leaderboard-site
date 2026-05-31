@@ -3,6 +3,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   DB_FILE,
+  countPlayers,
+  getPlayerContext,
   importJsonIfEmpty,
   listPlacementHistory,
   listPlayers,
@@ -79,8 +81,35 @@ function normalizePlayer(input) {
   return { player: { name, kills, damageDealt, damageReceived } };
 }
 
-function handleGetLeaderboard(_req, res) {
-  sendJson(res, 200, listPlayers());
+function handleGetLeaderboard(url, res) {
+  const search = url.searchParams.get('search') ?? '';
+  sendJson(res, 200, {
+    totalPlayers: countPlayers(),
+    players: listPlayers({
+      search,
+      limit: search.trim() ? 1000 : 100,
+    }),
+  });
+}
+
+function handleGetPlayerContext(url, res) {
+  const prefix = '/api/players/';
+  const suffix = '/context';
+  const encodedName = url.pathname.slice(prefix.length, -suffix.length);
+  const name = decodeURIComponent(encodedName).trim();
+
+  if (!name) {
+    sendError(res, 400, 'player name is required');
+    return;
+  }
+
+  const context = getPlayerContext(name);
+  if (!context) {
+    sendError(res, 404, 'player not found');
+    return;
+  }
+
+  sendJson(res, 200, context);
 }
 
 function handleGetPlacementHistory(url, res) {
@@ -127,7 +156,16 @@ const server = createServer(async (req, res) => {
     }
 
     if (url.pathname === '/api/leaderboard' && req.method === 'GET') {
-      handleGetLeaderboard(req, res);
+      handleGetLeaderboard(url, res);
+      return;
+    }
+
+    if (
+      url.pathname.startsWith('/api/players/') &&
+      url.pathname.endsWith('/context') &&
+      req.method === 'GET'
+    ) {
+      handleGetPlayerContext(url, res);
       return;
     }
 

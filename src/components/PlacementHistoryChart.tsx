@@ -135,8 +135,7 @@ export default function PlacementHistoryChart({ player, color }: Props) {
           <p className="font-pixel text-base text-danger">{error}</p>
         </div>
       ) : chart ? (
-        <div>
-          <div className="relative h-44 rounded-lg border border-line bg-surface/45 overflow-hidden">
+        <div className="relative h-44 rounded-lg border border-line bg-surface/45 overflow-hidden">
             <svg
               viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
               className="w-full h-full touch-none"
@@ -192,26 +191,6 @@ export default function PlacementHistoryChart({ player, color }: Props) {
                 )}
               </div>
             )}
-          </div>
-
-          <div className="grid grid-cols-4 gap-2 mt-3 font-pixel text-base">
-            <div>
-              <p className="text-ink-ghost uppercase tracking-wider">From</p>
-              <p className="text-ink">#{chart.first.rank}</p>
-            </div>
-            <div>
-              <p className="text-ink-ghost uppercase tracking-wider">Best</p>
-              <p className="text-success">#{chart.best}</p>
-            </div>
-            <div>
-              <p className="text-ink-ghost uppercase tracking-wider">Worst</p>
-              <p className="text-danger">#{chart.worst}</p>
-            </div>
-            <div>
-              <p className="text-ink-ghost uppercase tracking-wider">Now</p>
-              <p className="text-accent">#{chart.last.rank}</p>
-            </div>
-          </div>
         </div>
       ) : (
         <div className="h-40 rounded-lg border border-line bg-surface/45 flex flex-col items-center justify-center px-4 text-center">
