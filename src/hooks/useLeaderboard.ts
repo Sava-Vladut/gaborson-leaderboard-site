@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { fetchLeaderboard } from '../api/leaderboard';
 import type { Player, SortMetric } from '../types';
 
@@ -27,13 +27,25 @@ export function useLeaderboard(): LeaderboardState {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMetric, setSortMetric] = useState<SortMetric>('kills');
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const previousRanksRef = useRef<Map<string, number>>(new Map());
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
     setError(null);
     try {
       const data = await fetchLeaderboard();
-      setPlayers(data);
+      const previousRanks = previousRanksRef.current;
+      const nextPlayers = data.map(player => {
+        const key = player.name.toLowerCase();
+        const previousRank = previousRanks.get(key);
+        return {
+          ...player,
+          rankChange: previousRank === undefined ? 0 : previousRank - player.rank,
+        };
+      });
+
+      previousRanksRef.current = new Map(data.map(player => [player.name.toLowerCase(), player.rank]));
+      setPlayers(nextPlayers);
       setLastUpdated(new Date());
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to fetch leaderboard';

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { X, Crown, Medal, ChevronUp, ChevronDown, Shield } from 'lucide-react';
 import type { Player } from '../types';
+import PlacementHistoryChart from './PlacementHistoryChart';
 
 /* ─── helpers ─────────────────────────────────────────────── */
 
@@ -180,6 +181,8 @@ export default function PlayerProfileModal({ player, players, onClose }: Props) 
                 </div>
               ))}
             </div>
+
+            <PlacementHistoryChart player={player} totalPlayers={totalPlayers} color={color} />
 
             {/* Rank position */}
             <div className="bg-elevated rounded-xl p-4 border border-line">

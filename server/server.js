@@ -1,7 +1,14 @@
 import { createServer } from 'node:http';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DB_FILE, importJsonIfEmpty, listPlayers, upsertPlayer } from './db.js';
+import {
+  DB_FILE,
+  importJsonIfEmpty,
+  listPlacementHistory,
+  listPlayers,
+  recordPlacementSnapshot,
+  upsertPlayer,
+} from './db.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_FILE = process.env.LEADERBOARD_DATA_FILE ?? join(__dirname, 'leaderboard.json');
@@ -76,6 +83,21 @@ function handleGetLeaderboard(_req, res) {
   sendJson(res, 200, listPlayers());
 }
 
+function handleGetPlacementHistory(url, res) {
+  const prefix = '/api/players/';
+  const suffix = '/history';
+  const encodedName = url.pathname.slice(prefix.length, -suffix.length);
+  const name = decodeURIComponent(encodedName).trim();
+
+  if (!name) {
+    sendError(res, 400, 'player name is required');
+    return;
+  }
+
+  const limit = Number(url.searchParams.get('limit') ?? 100);
+  sendJson(res, 200, listPlacementHistory(name, limit));
+}
+
 async function handlePostLeaderboard(req, res) {
   const body = await readJsonBody(req);
   const { player, error } = normalizePlayer(body);
@@ -86,6 +108,7 @@ async function handlePostLeaderboard(req, res) {
   }
 
   upsertPlayer(player);
+  recordPlacementSnapshot();
   sendJson(res, 201, { ok: true, player, leaderboard: listPlayers() });
 }
 
@@ -105,6 +128,15 @@ const server = createServer(async (req, res) => {
 
     if (url.pathname === '/api/leaderboard' && req.method === 'GET') {
       handleGetLeaderboard(req, res);
+      return;
+    }
+
+    if (
+      url.pathname.startsWith('/api/players/') &&
+      url.pathname.endsWith('/history') &&
+      req.method === 'GET'
+    ) {
+      handleGetPlacementHistory(url, res);
       return;
     }
 

@@ -4,6 +4,7 @@ export interface Player {
   damageDealt: number;
   damageReceived: number;
   rank: number;
+  rankChange?: number;
   id: string;
 }
 
@@ -15,3 +16,9 @@ export interface ApiPlayer {
 }
 
 export type SortMetric = 'kills' | 'damageDealt' | 'damageReceived';
+
+export interface PlacementHistoryPoint {
+  timestamp: string;
+  rank: number;
+  kills?: number;
+}

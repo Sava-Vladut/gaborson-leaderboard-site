@@ -24,6 +24,20 @@ db.exec(`
     updated_at      INTEGER NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_players_kills ON players (kills DESC, name ASC);
+
+  CREATE TABLE IF NOT EXISTS placement_history (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    name_key        TEXT NOT NULL,
+    name            TEXT NOT NULL,
+    rank            INTEGER NOT NULL CHECK (rank > 0),
+    kills           INTEGER NOT NULL DEFAULT 0 CHECK (kills >= 0),
+    damage_dealt    INTEGER NOT NULL DEFAULT 0 CHECK (damage_dealt >= 0),
+    damage_received INTEGER NOT NULL DEFAULT 0 CHECK (damage_received >= 0),
+    captured_at     INTEGER NOT NULL,
+    FOREIGN KEY (name_key) REFERENCES players(name_key) ON DELETE CASCADE
+  );
+  CREATE INDEX IF NOT EXISTS idx_placement_history_player_time
+    ON placement_history (name_key, captured_at ASC);
 `);
 
 // One-shot migrations for DBs created before these columns existed.
@@ -39,6 +53,17 @@ const listStmt = db.prepare(
   'SELECT name, kills, damage_dealt AS damageDealt, damage_received AS damageReceived FROM players ORDER BY kills DESC, name ASC'
 );
 
+const listRowsStmt = db.prepare(`
+  SELECT
+    name_key AS nameKey,
+    name,
+    kills,
+    damage_dealt AS damageDealt,
+    damage_received AS damageReceived
+  FROM players
+  ORDER BY kills DESC, name ASC
+`);
+
 const upsertStmt = db.prepare(`
   INSERT INTO players (name_key, name, kills, damage_dealt, damage_received, updated_at)
   VALUES (@name_key, @name, @kills, @damage_dealt, @damage_received, @updated_at)
@@ -51,6 +76,50 @@ const upsertStmt = db.prepare(`
 `);
 
 const countStmt = db.prepare('SELECT COUNT(*) AS n FROM players');
+
+const insertHistoryStmt = db.prepare(`
+  INSERT INTO placement_history (
+    name_key,
+    name,
+    rank,
+    kills,
+    damage_dealt,
+    damage_received,
+    captured_at
+  )
+  VALUES (
+    @name_key,
+    @name,
+    @rank,
+    @kills,
+    @damage_dealt,
+    @damage_received,
+    @captured_at
+  )
+`);
+
+const latestHistoryStmt = db.prepare(`
+  SELECT
+    rank,
+    kills
+  FROM placement_history
+  WHERE name_key = @name_key
+  ORDER BY captured_at DESC, id DESC
+  LIMIT 1
+`);
+
+const historyStmt = db.prepare(`
+  SELECT
+    captured_at AS capturedAt,
+    rank,
+    kills,
+    damage_dealt AS damageDealt,
+    damage_received AS damageReceived
+  FROM placement_history
+  WHERE name_key = @name_key
+  ORDER BY captured_at ASC
+  LIMIT @limit
+`);
 
 export function listPlayers() {
   return listStmt.all();
@@ -65,6 +134,54 @@ export function upsertPlayer({ name, kills, damageDealt = 0, damageReceived = 0 
     damage_received: damageReceived,
     updated_at: Date.now(),
   });
+}
+
+export function recordPlacementSnapshot(capturedAt = Date.now()) {
+  const rows = listRowsStmt.all();
+  if (rows.length === 0) return 0;
+
+  const changedRows = rows
+    .map((player, i) => ({ ...player, rank: i + 1 }))
+    .filter((player) => {
+      const latest = latestHistoryStmt.get({ name_key: player.nameKey });
+      return !latest || latest.rank !== player.rank || latest.kills !== player.kills;
+    });
+
+  if (changedRows.length === 0) return 0;
+
+  db.exec('BEGIN');
+  try {
+    changedRows.forEach((player) => {
+      insertHistoryStmt.run({
+        name_key: player.nameKey,
+        name: player.name,
+        rank: player.rank,
+        kills: player.kills,
+        damage_dealt: player.damageDealt,
+        damage_received: player.damageReceived,
+        captured_at: capturedAt,
+      });
+    });
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
+
+  return changedRows.length;
+}
+
+export function listPlacementHistory(name, limit = 100) {
+  return historyStmt.all({
+    name_key: String(name ?? '').trim().toLowerCase(),
+    limit: Math.max(1, Math.min(500, Number(limit) || 100)),
+  }).map((row) => ({
+    timestamp: new Date(row.capturedAt).toISOString(),
+    rank: row.rank,
+    kills: row.kills,
+    damageDealt: row.damageDealt,
+    damageReceived: row.damageReceived,
+  }));
 }
 
 export async function importJsonIfEmpty(jsonPath) {
@@ -103,6 +220,7 @@ export async function importJsonIfEmpty(jsonPath) {
     db.exec('ROLLBACK');
     throw e;
   }
+  recordPlacementSnapshot(now);
   return countStmt.get().n;
 }
 
