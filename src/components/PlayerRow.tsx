@@ -1,4 +1,4 @@
-import type { Player } from '../types';
+import type { Player, SortMetric } from '../types';
 
 const RANK_STYLE: Record<number, { text: string; bg: string; border: string }> = {
   1: { text: 'text-gold glow-gold', bg: 'bg-gold/5',   border: 'border-gold/30' },
@@ -9,12 +9,19 @@ const RANK_STYLE: Record<number, { text: string; bg: string; border: string }> =
 const barColor = (rank: number) =>
   rank === 1 ? '#f0b830' : rank === 2 ? '#9ab0c8' : rank === 3 ? '#c87840' : '#00e0ff99';
 
-interface Props { player: Player; maxKills: number; onClick: (p: Player) => void; }
+interface Props {
+  player: Player;
+  position: number;
+  maxMetricValue: number;
+  sortMetric: SortMetric;
+  onClick: (p: Player) => void;
+}
 
-export default function PlayerRow({ player, maxKills, onClick }: Props) {
-  const top   = player.rank <= 3;
-  const rs    = RANK_STYLE[player.rank];
-  const fill  = Math.max(2, (player.kills / maxKills) * 100);
+export default function PlayerRow({ player, position, maxMetricValue, sortMetric, onClick }: Props) {
+  const top   = position <= 3;
+  const rs    = RANK_STYLE[position];
+  const metricValue = player[sortMetric];
+  const fill  = Math.max(2, (metricValue / maxMetricValue) * 100);
 
   return (
     <div
@@ -26,25 +33,25 @@ export default function PlayerRow({ player, maxKills, onClick }: Props) {
         border cursor-pointer select-none transition-all duration-200 outline-none
         focus-visible:ring-1 focus-visible:ring-accent/50
         ${top ? `${rs.bg} ${rs.border}` : 'border-transparent hover:border-line-bright hover:bg-elevated/70'}
-        ${player.rank === 1 ? 'animate-pulse-glow' : ''}
+        ${position === 1 ? 'animate-pulse-glow' : ''}
       `}
     >
       {/* Left accent stripe */}
       <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-2/3 rounded-full transition-opacity duration-200
         ${top ? 'opacity-100' : 'opacity-0 group-hover:opacity-80'}
-        ${player.rank === 1 ? 'bg-gold' : player.rank === 2 ? 'bg-silver' : player.rank === 3 ? 'bg-bronze' : 'bg-accent'}
+        ${position === 1 ? 'bg-gold' : position === 2 ? 'bg-silver' : position === 3 ? 'bg-bronze' : 'bg-accent'}
       `} />
 
-      {/* Rank number */}
+      {/* Sort position */}
       <div className={`flex-shrink-0 w-12 text-center font-pixel text-xl
         ${top ? rs.text : 'text-ink-ghost group-hover:text-ink-dim transition-colors duration-200'}`}>
-        {player.rank < 10 ? `0${player.rank}` : player.rank}
+        {position < 10 ? `0${position}` : position}
       </div>
 
       {/* Name + kills bar */}
       <div className="flex-1 min-w-0">
         <p className={`font-pixel text-xl truncate transition-colors duration-200
-          ${player.rank === 1 ? 'text-gold' : top ? 'text-ink' : 'text-ink-dim group-hover:text-ink'}`}>
+          ${position === 1 ? 'text-gold' : top ? 'text-ink' : 'text-ink-dim group-hover:text-ink'}`}>
           {player.name}
         </p>
         <div className="mt-1.5 h-[3px] rounded-full bg-line overflow-hidden">
@@ -55,10 +62,10 @@ export default function PlayerRow({ player, maxKills, onClick }: Props) {
         </div>
       </div>
 
-      {/* Kills */}
+      {/* Active metric */}
       <div className={`flex-shrink-0 font-pixel text-xl text-right transition-colors duration-200
         ${top ? rs.text : 'text-ink-dim group-hover:text-ink'}`}>
-        {player.kills.toLocaleString()}
+        {metricValue.toLocaleString()}
       </div>
     </div>
   );

@@ -1,12 +1,14 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { fetchLeaderboard } from '../api/leaderboard';
-import type { Player } from '../types';
+import type { Player, SortMetric } from '../types';
 
 export interface LeaderboardState {
   players: Player[];
   filteredPlayers: Player[];
   topThree: Player[];
-  maxKills: number;
+  maxMetricValue: number;
+  sortMetric: SortMetric;
+  setSortMetric: (m: SortMetric) => void;
   loading: boolean;
   error: string | null;
   lastUpdated: Date | null;
@@ -23,6 +25,7 @@ export function useLeaderboard(): LeaderboardState {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortMetric, setSortMetric] = useState<SortMetric>('kills');
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
 
   const load = useCallback(async (isRefresh = false) => {
@@ -41,22 +44,33 @@ export function useLeaderboard(): LeaderboardState {
   }, []);
 
   // Initial fetch
-  useEffect(() => { load(false); }, [load]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { load(false); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   const filteredPlayers = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return players;
-    return players.filter(p => p.name.toLowerCase().includes(q));
-  }, [players, searchQuery]);
+    const base = q ? players.filter(p => p.name.toLowerCase().includes(q)) : players;
+    return [...base].sort((a, b) => {
+      const diff = b[sortMetric] - a[sortMetric];
+      return diff || a.rank - b.rank;
+    });
+  }, [players, searchQuery, sortMetric]);
 
   const topThree   = useMemo(() => players.slice(0, 3), [players]);
-  const maxKills   = useMemo(() => players[0]?.kills ?? 1, [players]);
+  const maxMetricValue = useMemo(
+    () => Math.max(1, ...players.map(p => p[sortMetric])),
+    [players, sortMetric],
+  );
 
   return {
     players,
     filteredPlayers,
     topThree,
-    maxKills,
+    maxMetricValue,
+    sortMetric,
+    setSortMetric,
     loading,
     error,
     lastUpdated,

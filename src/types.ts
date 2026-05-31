@@ -13,3 +13,5 @@ export interface ApiPlayer {
   damageDealt: number;
   damageReceived: number;
 }
+
+export type SortMetric = 'kills' | 'damageDealt' | 'damageReceived';

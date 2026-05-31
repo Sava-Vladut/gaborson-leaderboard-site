@@ -1,47 +1,88 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import PlayerRow from './PlayerRow';
-import type { Player } from '../types';
+import type { Player, SortMetric } from '../types';
 
 const PAGE_SIZE = 20;
+const SORT_OPTIONS: Array<{ metric: SortMetric; label: string; shortLabel: string }> = [
+  { metric: 'kills', label: 'Kills', shortLabel: 'Kills' },
+  { metric: 'damageDealt', label: 'Damage Dealt', shortLabel: 'Dealt' },
+  { metric: 'damageReceived', label: 'Damage Received', shortLabel: 'Taken' },
+];
 
 interface Props {
   players: Player[];
-  maxKills: number;
+  maxMetricValue: number;
+  sortMetric: SortMetric;
+  onSortMetricChange: (m: SortMetric) => void;
   onPlayerClick: (p: Player) => void;
 }
 
-export default function LeaderboardTable({ players, maxKills, onPlayerClick }: Props) {
+export default function LeaderboardTable({
+  players,
+  maxMetricValue,
+  sortMetric,
+  onSortMetricChange,
+  onPlayerClick,
+}: Props) {
   const [page, setPage] = useState(0);
-  useEffect(() => { setPage(0); }, [players]);
 
   const totalPages = Math.ceil(players.length / PAGE_SIZE);
-  const slice = players.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const currentPage = Math.min(page, Math.max(0, totalPages - 1));
+  const slice = players.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
+  const activeSort = SORT_OPTIONS.find(option => option.metric === sortMetric) ?? SORT_OPTIONS[0];
 
   return (
     <div className="card p-3 sm:p-4">
       {/* Header */}
-      <div className="flex items-center justify-between mb-5 px-1">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-5 px-1">
         <div>
           <h2 className="font-pixel text-lg text-ink-dim uppercase tracking-widest">
             All Players
           </h2>
           <p className="text-base font-pixel text-ink-ghost mt-0.5">{players.length} ranked</p>
         </div>
-        <div className="hidden sm:flex items-center text-base font-pixel text-ink-ghost uppercase tracking-wider pr-1">
-          <span className="w-24 text-right">Kills</span>
+        <div className="flex flex-col items-stretch gap-2 sm:items-end">
+          <div className="flex rounded-lg border border-line bg-elevated/70 p-1">
+            {SORT_OPTIONS.map(option => (
+              <button
+                key={option.metric}
+                type="button"
+                onClick={() => onSortMetricChange(option.metric)}
+                className={`rounded-md px-3 py-1.5 font-pixel text-sm uppercase tracking-wider transition-all duration-150
+                  ${option.metric === sortMetric
+                    ? 'bg-accent/15 text-accent shadow-[0_0_18px_rgba(0,224,255,0.10)]'
+                    : 'text-ink-ghost hover:text-ink-dim'
+                  }`}
+                aria-pressed={option.metric === sortMetric}
+              >
+                <span className="sm:hidden">{option.shortLabel}</span>
+                <span className="hidden sm:inline">{option.label}</span>
+              </button>
+            ))}
+          </div>
+          <div className="hidden sm:flex items-center text-base font-pixel text-ink-ghost uppercase tracking-wider pr-1">
+            <span className="w-32 text-right">{activeSort.label}</span>
+          </div>
         </div>
       </div>
 
       {/* Rows */}
-      <div className="space-y-1" key={`${page}-${players.length}`}>
+      <div className="space-y-1" key={`${currentPage}-${players.length}-${sortMetric}`}>
         {slice.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-ink-ghost font-pixel text-xl">No players match your search</p>
           </div>
         ) : (
-          slice.map(p => (
-            <PlayerRow key={p.id} player={p} maxKills={maxKills} onClick={onPlayerClick} />
+          slice.map((p, i) => (
+            <PlayerRow
+              key={p.id}
+              player={p}
+              position={currentPage * PAGE_SIZE + i + 1}
+              maxMetricValue={maxMetricValue}
+              sortMetric={sortMetric}
+              onClick={onPlayerClick}
+            />
           ))
         )}
       </div>
@@ -51,7 +92,7 @@ export default function LeaderboardTable({ players, maxKills, onPlayerClick }: P
         <div className="flex items-center justify-between mt-6 pt-4 border-t border-line">
           <button
             onClick={() => setPage(p => Math.max(0, p - 1))}
-            disabled={page === 0}
+            disabled={currentPage === 0}
             className="btn-ghost flex items-center gap-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <ChevronLeft className="w-4 h-4" /> Prev
@@ -63,7 +104,7 @@ export default function LeaderboardTable({ players, maxKills, onPlayerClick }: P
                 key={i}
                 onClick={() => setPage(i)}
                 className={`w-9 h-9 rounded font-pixel text-sm transition-all duration-150
-                  ${i === page
+                  ${i === currentPage
                     ? 'bg-accent/20 border border-accent/40 text-accent'
                     : 'text-ink-ghost hover:text-ink-dim'
                   }`}
@@ -75,7 +116,7 @@ export default function LeaderboardTable({ players, maxKills, onPlayerClick }: P
 
           <button
             onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-            disabled={page === totalPages - 1}
+            disabled={currentPage === totalPages - 1}
             className="btn-ghost flex items-center gap-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
           >
             Next <ChevronRight className="w-4 h-4" />

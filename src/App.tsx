@@ -12,7 +12,9 @@ export default function App() {
   const {
     players,
     filteredPlayers,
-    maxKills,
+    maxMetricValue,
+    sortMetric,
+    setSortMetric,
     loading,
     error,
     lastUpdated,
@@ -75,7 +77,9 @@ export default function App() {
                 <div className="w-full">
                   <LeaderboardTable
                     players={filteredPlayers}
-                    maxKills={maxKills}
+                    maxMetricValue={maxMetricValue}
+                    sortMetric={sortMetric}
+                    onSortMetricChange={setSortMetric}
                     onPlayerClick={setSelectedPlayer}
                   />
                 </div>
