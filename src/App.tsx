@@ -27,6 +27,9 @@ export default function App() {
 
   const searchedPlayer =
     searchQuery.trim() && filteredPlayers.length === 1 ? filteredPlayers[0] : null;
+  const liveSelectedPlayer = selectedPlayer
+    ? players.find(player => player.name.toLowerCase() === selectedPlayer.name.toLowerCase()) ?? selectedPlayer
+    : null;
 
   const showFirstLoadError = !loading && players.length === 0 && error;
 
@@ -101,9 +104,9 @@ export default function App() {
       />
 
       {/* Player profile modal */}
-      {selectedPlayer && (
+      {liveSelectedPlayer && (
         <PlayerProfileModal
-          player={selectedPlayer}
+          player={liveSelectedPlayer}
           players={players}
           onClose={() => setSelectedPlayer(null)}
         />

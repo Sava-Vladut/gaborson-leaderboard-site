@@ -45,7 +45,8 @@ export default function PlayerProfileModal({ player, players, onClose }: Props) 
   const totalPlayers = players.length;
   const topPct       = Math.max(1, Math.ceil((player.rank / totalPlayers) * 100));
   const pc           = pctColor(topPct);
-  const killsRating  = Math.round((player.kills / (players[0]?.kills ?? player.kills)) * 100);
+  const leaderKills  = players[0]?.kills ?? 0;
+  const killsRating  = leaderKills > 0 ? Math.round((player.kills / leaderKills) * 100) : 0;
   const playerAbove  = players[player.rank - 2];
   const playerBelow  = players[player.rank];
   const gapUp        = playerAbove ? playerAbove.kills - player.kills : null;
@@ -182,7 +183,7 @@ export default function PlayerProfileModal({ player, players, onClose }: Props) 
               ))}
             </div>
 
-            <PlacementHistoryChart player={player} totalPlayers={totalPlayers} color={color} />
+            <PlacementHistoryChart player={player} color={color} />
 
             {/* Rank position */}
             <div className="bg-elevated rounded-xl p-4 border border-line">

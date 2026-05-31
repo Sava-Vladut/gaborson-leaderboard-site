@@ -5,7 +5,6 @@ import type { PlacementHistoryPoint, Player } from '../types';
 
 interface Props {
   player: Player;
-  totalPlayers: number;
   color: string;
 }
 
@@ -24,8 +23,9 @@ function linePath(points: Array<{ x: number; y: number }>): string {
   return points.map((point, i) => `${i === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
 }
 
-export default function PlacementHistoryChart({ player, totalPlayers, color }: Props) {
+export default function PlacementHistoryChart({ player, color }: Props) {
   const [history, setHistory] = useState<PlacementHistoryPoint[]>([]);
+  const [historyPlayerName, setHistoryPlayerName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -35,12 +35,17 @@ export default function PlacementHistoryChart({ player, totalPlayers, color }: P
     const timer = window.setTimeout(() => {
       setLoading(true);
       setError(null);
+      setHoveredIndex(null);
       fetchPlacementHistory(player.name)
-        .then(setHistory)
+        .then(points => {
+          setHistory(points);
+          setHistoryPlayerName(player.name);
+        })
         .catch(err => {
           const message = err instanceof Error ? err.message : 'Failed to load placement history';
           setError(message);
           setHistory([]);
+          setHistoryPlayerName(player.name);
         })
         .finally(() => setLoading(false));
     }, 0);
@@ -48,11 +53,29 @@ export default function PlacementHistoryChart({ player, totalPlayers, color }: P
     return () => window.clearTimeout(timer);
   }, [player.name]);
 
-  const chart = useMemo(() => {
-    const points = history.length > 1 ? history : [];
-    if (points.length === 0) return null;
+  const loadedHistory = useMemo(
+    () => (historyPlayerName === player.name ? history : []),
+    [history, historyPlayerName, player.name],
+  );
+  const isLoadingHistory = loading || historyPlayerName !== player.name;
 
-    const maxRank = Math.max(totalPlayers, ...points.map(point => point.rank));
+  const chart = useMemo(() => {
+    const latest = loadedHistory[loadedHistory.length - 1];
+    const currentPoint: PlacementHistoryPoint = {
+      timestamp: new Date().toISOString(),
+      rank: player.rank,
+      kills: player.kills,
+    };
+    const points =
+      latest && (latest.rank !== player.rank || latest.kills !== player.kills)
+        ? [...loadedHistory, currentPoint]
+        : loadedHistory;
+
+    if (points.length <= 1) return null;
+
+    const bestRank = Math.min(...points.map(point => point.rank));
+    const worstRank = Math.max(...points.map(point => point.rank));
+    const rankSpan = Math.max(1, worstRank - bestRank);
     const minTime = Date.parse(points[0].timestamp);
     const maxTime = Date.parse(points[points.length - 1].timestamp);
     const timeSpan = Math.max(1, maxTime - minTime);
@@ -60,7 +83,7 @@ export default function PlacementHistoryChart({ player, totalPlayers, color }: P
     const coords = points.map(point => {
       const time = Date.parse(point.timestamp);
       const x = PAD_X + ((time - minTime) / timeSpan) * (WIDTH - PAD_X * 2);
-      const y = PAD_Y + ((point.rank - 1) / Math.max(1, maxRank - 1)) * (HEIGHT - PAD_Y * 2);
+      const y = PAD_Y + ((point.rank - bestRank) / rankSpan) * (HEIGHT - PAD_Y * 2);
       return { x, y, point };
     });
 
@@ -69,11 +92,10 @@ export default function PlacementHistoryChart({ player, totalPlayers, color }: P
       path: linePath(coords),
       first: points[0],
       last: points[points.length - 1],
-      best: Math.min(...points.map(point => point.rank)),
-      worst: Math.max(...points.map(point => point.rank)),
-      maxRank,
+      best: bestRank,
+      worst: worstRank,
     };
-  }, [history, totalPlayers]);
+  }, [loadedHistory, player.kills, player.rank]);
 
   const hovered = chart && hoveredIndex !== null ? chart.coords[hoveredIndex] : null;
 
@@ -106,7 +128,7 @@ export default function PlacementHistoryChart({ player, totalPlayers, color }: P
         <p className="font-pixel text-xl text-ink">#{player.rank}</p>
       </div>
 
-      {loading ? (
+      {isLoadingHistory ? (
         <div className="h-40 rounded-lg border border-line bg-surface/45 skeleton" />
       ) : error ? (
         <div className="h-40 rounded-lg border border-line bg-surface/45 flex items-center justify-center px-4 text-center">
@@ -132,11 +154,9 @@ export default function PlacementHistoryChart({ player, totalPlayers, color }: P
 
               {[0, 0.5, 1].map(offset => {
                 const y = PAD_Y + offset * (HEIGHT - PAD_Y * 2);
-                const label = Math.max(1, Math.round(1 + offset * (chart.maxRank - 1)));
                 return (
                   <g key={offset}>
                     <line x1={PAD_X} x2={WIDTH - PAD_X} y1={y} y2={y} stroke="rgba(122,155,184,0.16)" />
-                    <text x={10} y={y + 4} className="fill-ink-ghost font-pixel text-[10px]">#{label}</text>
                   </g>
                 );
               })}
