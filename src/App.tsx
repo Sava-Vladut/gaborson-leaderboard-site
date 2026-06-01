@@ -6,6 +6,7 @@ import SearchBar from './components/SearchBar';
 import PlayerRankDisplay from './components/PlayerRankDisplay';
 import PlayerProfileModal from './components/PlayerProfileModal';
 import LoadingState from './components/LoadingState';
+import ErrorState from './components/ErrorState';
 import StatusBar from './components/StatusBar';
 
 export default function App() {
@@ -48,20 +49,7 @@ export default function App() {
         {showInitialLoading ? (
           <LoadingState />
         ) : showFirstLoadError ? (
-          /* Only show full error page if we have zero data at all */
-          <div className="px-6">
-            <div className="max-w-7xl mx-auto">
-              <div className="card p-8 text-center border-danger/20">
-                <p className="font-pixel text-base font-bold text-ink uppercase tracking-wider mb-2">
-                  Connection Failed
-                </p>
-                <p className="font-pixel text-xs text-ink-ghost mb-4">{error}</p>
-                <button onClick={refresh} className="btn-ghost mx-auto flex items-center gap-2 text-sm">
-                  Try Again
-                </button>
-              </div>
-            </div>
-          </div>
+          <ErrorState message={error} onRetry={refresh} />
         ) : (
           <>
             {/* Podium — global top 3 for the active sort */}

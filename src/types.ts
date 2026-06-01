@@ -9,11 +9,6 @@ export interface Player {
   id: string;
 }
 
-export interface EconomyBalance {
-  name: string;
-  money: number;
-}
-
 export interface ApiPlayer {
   name: string;
   kills: number;
