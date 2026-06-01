@@ -83,10 +83,12 @@ function normalizePlayer(input) {
 
 function handleGetLeaderboard(url, res) {
   const search = url.searchParams.get('search') ?? '';
+  const sort = url.searchParams.get('sort') ?? 'kills';
   sendJson(res, 200, {
     totalPlayers: countPlayers(),
     players: listPlayers({
       search,
+      sort,
       limit: search.trim() ? 1000 : 100,
     }),
   });

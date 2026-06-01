@@ -35,7 +35,7 @@ export function useLeaderboard(): LeaderboardState {
     if (!isRefresh) setLoading(true);
     setError(null);
     try {
-      const data = await fetchLeaderboard(search);
+      const data = await fetchLeaderboard(search, sortMetric);
       setPlayers(data.players);
       setTotalPlayers(data.totalPlayers);
       setLastUpdated(new Date());
@@ -45,7 +45,7 @@ export function useLeaderboard(): LeaderboardState {
     } finally {
       setLoading(false);
     }
-  }, [trimmedSearchQuery]);
+  }, [sortMetric, trimmedSearchQuery]);
 
   // Initial fetch
   useEffect(() => {
@@ -60,10 +60,10 @@ export function useLeaderboard(): LeaderboardState {
     });
   }, [players, sortMetric]);
 
-  const topThree   = useMemo(() => players.slice(0, 3), [players]);
+  const topThree   = useMemo(() => filteredPlayers.slice(0, 3), [filteredPlayers]);
   const maxMetricValue = useMemo(
-    () => Math.max(1, ...players.map(p => p[sortMetric])),
-    [players, sortMetric],
+    () => Math.max(1, ...filteredPlayers.map(p => p[sortMetric])),
+    [filteredPlayers, sortMetric],
   );
 
   return {

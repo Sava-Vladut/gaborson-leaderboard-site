@@ -49,7 +49,7 @@ if (!existingCols.includes('damage_received')) {
   db.exec('ALTER TABLE players ADD COLUMN damage_received INTEGER NOT NULL DEFAULT 0 CHECK (damage_received >= 0)');
 }
 
-const listStmt = db.prepare(`
+const LIST_SQL = `
   SELECT
     nameKey,
     name,
@@ -64,13 +64,19 @@ const listStmt = db.prepare(`
       kills,
       damage_dealt AS damageDealt,
       damage_received AS damageReceived,
-      ROW_NUMBER() OVER (ORDER BY kills DESC, name ASC) AS rank
+      ROW_NUMBER() OVER (ORDER BY __ORDER_BY__ DESC, name ASC) AS rank
     FROM players
   )
   WHERE @search = '' OR lower(name) LIKE @search_like
   ORDER BY rank ASC
   LIMIT @limit
-`);
+`;
+
+const listStmts = {
+  kills: db.prepare(LIST_SQL.replaceAll('__ORDER_BY__', 'kills')),
+  damageDealt: db.prepare(LIST_SQL.replaceAll('__ORDER_BY__', 'damage_dealt')),
+  damageReceived: db.prepare(LIST_SQL.replaceAll('__ORDER_BY__', 'damage_received')),
+};
 
 const previousRankStmt = db.prepare(`
   SELECT rank
@@ -202,9 +208,10 @@ const playerContextStmt = db.prepare(`
   WHERE ranked.rank = target.rank + 1
 `);
 
-export function listPlayers({ search = '', limit = 100 } = {}) {
+export function listPlayers({ search = '', limit = 100, sort = 'kills' } = {}) {
   const q = String(search ?? '').trim().toLowerCase();
-  return listStmt.all({
+  const stmt = listStmts[sort] ?? listStmts.kills;
+  return stmt.all({
     search: q,
     search_like: `%${q}%`,
     limit: Math.max(1, Math.min(1000, Number(limit) || 100)),

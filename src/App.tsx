@@ -12,6 +12,7 @@ export default function App() {
   const {
     players,
     filteredPlayers,
+    topThree,
     totalPlayers,
     maxMetricValue,
     sortMetric,
@@ -61,9 +62,9 @@ export default function App() {
           </div>
         ) : (
           <>
-            {/* Podium — global top 3 */}
+            {/* Podium — global top 3 for the active sort */}
             {!searchQuery.trim() && (
-              <TopThree players={players} onPlayerClick={setSelectedPlayer} />
+              <TopThree players={topThree} sortMetric={sortMetric} onPlayerClick={setSelectedPlayer} />
             )}
 
             {/* Search */}
@@ -88,7 +89,7 @@ export default function App() {
 
                 {/* Search result detail */}
                 <div>
-                  <PlayerRankDisplay player={searchedPlayer} />
+                  <PlayerRankDisplay player={searchedPlayer} sortMetric={sortMetric} />
                 </div>
               </div>
             </div>

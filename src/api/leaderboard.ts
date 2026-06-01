@@ -1,4 +1,4 @@
-import type { ApiPlayer, LeaderboardResponse, PlacementHistoryPoint, Player, PlayerContext } from '../types';
+import type { ApiPlayer, LeaderboardResponse, PlacementHistoryPoint, Player, PlayerContext, SortMetric } from '../types';
 
 function normalize(data: ApiPlayer[]): Player[] {
   return [...data]
@@ -14,13 +14,14 @@ function normalize(data: ApiPlayer[]): Player[] {
     .sort((a, b) => a.rank - b.rank);
 }
 
-export async function fetchLeaderboard(search = ''): Promise<{ players: Player[]; totalPlayers: number }> {
+export async function fetchLeaderboard(search = '', sort: SortMetric = 'kills'): Promise<{ players: Player[]; totalPlayers: number }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 8000);
 
   try {
     const params = new URLSearchParams();
     if (search.trim()) params.set('search', search.trim());
+    params.set('sort', sort);
     const url = `/api/leaderboard${params.size ? `?${params}` : ''}`;
 
     const res = await fetch(url, {

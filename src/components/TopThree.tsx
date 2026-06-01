@@ -1,5 +1,5 @@
 import { Crown, Medal } from 'lucide-react';
-import type { Player } from '../types';
+import type { Player, SortMetric } from '../types';
 
 function fmt(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -37,9 +37,28 @@ const CFG = {
   },
 } as const;
 
-function PodiumCard({ player, cls, onClick }: { player: Player; cls: string; onClick: (p: Player) => void }) {
-  const cfg = CFG[player.rank as 1 | 2 | 3];
+const METRIC_LABELS: Record<SortMetric, string> = {
+  kills: 'kills',
+  damageDealt: 'damage dealt',
+  damageReceived: 'damage taken',
+};
+
+function PodiumCard({
+  player,
+  placement,
+  cls,
+  sortMetric,
+  onClick,
+}: {
+  player: Player;
+  placement: 1 | 2 | 3;
+  cls: string;
+  sortMetric: SortMetric;
+  onClick: (p: Player) => void;
+}) {
+  const cfg = CFG[placement];
   const { Icon } = cfg;
+  const metricValue = player[sortMetric];
 
   return (
     <div
@@ -65,18 +84,21 @@ function PodiumCard({ player, cls, onClick }: { player: Player; cls: string; onC
           <p className="font-pixel text-xl text-ink leading-tight truncate max-w-[140px]">
             {player.name}
           </p>
-          <p className={`font-pixel text-3xl mt-1 ${cfg.rank}`}>{fmt(player.kills)}</p>
+          <p className={`font-pixel text-3xl mt-1 ${cfg.rank}`}>{fmt(metricValue)}</p>
+          <p className="font-pixel text-base text-ink-ghost uppercase tracking-wider mt-1">
+            {METRIC_LABELS[sortMetric]}
+          </p>
         </div>
 
         {/* Rank watermark */}
         <span className={`absolute bottom-2 right-3 font-pixel text-5xl opacity-[0.07] ${cfg.rank}`}>
-          #{player.rank}
+          #{placement}
         </span>
       </div>
 
       {/* Podium base */}
       <div className={`w-full max-w-[195px] rounded-b-lg flex items-center justify-center ${cfg.podium}`}>
-        <span className={`font-pixel text-2xl opacity-50 ${cfg.rank}`}>#{player.rank}</span>
+        <span className={`font-pixel text-2xl opacity-50 ${cfg.rank}`}>#{placement}</span>
       </div>
     </div>
   );
@@ -84,19 +106,20 @@ function PodiumCard({ player, cls, onClick }: { player: Player; cls: string; onC
 
 interface TopThreeProps {
   players: Player[];
+  sortMetric: SortMetric;
   onPlayerClick: (p: Player) => void;
 }
 
-export default function TopThree({ players, onPlayerClick }: TopThreeProps) {
+export default function TopThree({ players, sortMetric, onPlayerClick }: TopThreeProps) {
   if (players.length < 3) return null;
   const [p1, p2, p3] = players;
 
   return (
     <section className="px-6 py-4">
       <div className="flex items-end justify-center gap-3 sm:gap-4 max-w-3xl mx-auto">
-        <div className="flex-1 max-w-[195px] podium-2"><PodiumCard player={p2} cls="" onClick={onPlayerClick} /></div>
-        <div className="flex-1 max-w-[195px] podium-1"><PodiumCard player={p1} cls="" onClick={onPlayerClick} /></div>
-        <div className="flex-1 max-w-[195px] podium-3"><PodiumCard player={p3} cls="" onClick={onPlayerClick} /></div>
+        <div className="flex-1 max-w-[195px] podium-2"><PodiumCard player={p2} placement={2} cls="" sortMetric={sortMetric} onClick={onPlayerClick} /></div>
+        <div className="flex-1 max-w-[195px] podium-1"><PodiumCard player={p1} placement={1} cls="" sortMetric={sortMetric} onClick={onPlayerClick} /></div>
+        <div className="flex-1 max-w-[195px] podium-3"><PodiumCard player={p3} placement={3} cls="" sortMetric={sortMetric} onClick={onPlayerClick} /></div>
       </div>
     </section>
   );

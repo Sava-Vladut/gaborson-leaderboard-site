@@ -1,7 +1,13 @@
 import { Star } from 'lucide-react';
-import type { Player } from '../types';
+import type { Player, SortMetric } from '../types';
 
-export default function PlayerRankDisplay({ player }: { player: Player | null }) {
+const METRIC_LABELS: Record<SortMetric, string> = {
+  kills: 'kills',
+  damageDealt: 'damage dealt',
+  damageReceived: 'damage taken',
+};
+
+export default function PlayerRankDisplay({ player, sortMetric }: { player: Player | null; sortMetric: SortMetric }) {
   if (!player) {
     return null;
   }
@@ -22,7 +28,7 @@ export default function PlayerRankDisplay({ player }: { player: Player | null })
         <div>
           <p className="font-pixel text-2xl text-ink leading-tight">{player.name}</p>
           <p className="font-pixel text-accent text-xl mt-1">
-            {player.kills.toLocaleString()} kills
+            {player[sortMetric].toLocaleString()} {METRIC_LABELS[sortMetric]}
           </p>
         </div>
       </div>
