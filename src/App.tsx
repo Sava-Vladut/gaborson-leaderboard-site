@@ -33,7 +33,9 @@ export default function App() {
     ? players.find(player => player.name.toLowerCase() === selectedPlayer.name.toLowerCase()) ?? selectedPlayer
     : null;
 
-  const showFirstLoadError = !loading && players.length === 0 && error;
+  const hasSearchQuery = Boolean(searchQuery.trim());
+  const showInitialLoading = loading && players.length === 0 && !hasSearchQuery;
+  const showFirstLoadError = !loading && players.length === 0 && error && !hasSearchQuery;
 
   return (
     <div className="min-h-screen bg-void flex flex-col">
@@ -43,7 +45,7 @@ export default function App() {
       <Header lastUpdated={lastUpdated} />
 
       <main className="flex-1 pb-20">
-        {loading && players.length === 0 ? (
+        {showInitialLoading ? (
           <LoadingState />
         ) : showFirstLoadError ? (
           /* Only show full error page if we have zero data at all */
@@ -63,7 +65,7 @@ export default function App() {
         ) : (
           <>
             {/* Podium — global top 3 for the active sort */}
-            {!searchQuery.trim() && (
+            {!hasSearchQuery && (
               <TopThree players={topThree} sortMetric={sortMetric} onPlayerClick={setSelectedPlayer} />
             )}
 

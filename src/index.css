@@ -13,7 +13,9 @@
 @layer base {
   *, *::before, *::after { box-sizing: border-box; }
 
-  html { scroll-behavior: smooth; }
+  /* Global UI scale via root font-size — all text/spacing use rem, so this
+     enlarges everything proportionally (no clipping in fixed columns). */
+  html { scroll-behavior: smooth; font-size: 120%; }
 
   body {
     background-color: #04080c;

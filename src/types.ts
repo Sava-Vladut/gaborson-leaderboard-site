@@ -3,9 +3,15 @@ export interface Player {
   kills: number;
   damageDealt: number;
   damageReceived: number;
+  money: number;
   rank: number;
   rankChange?: number;
   id: string;
+}
+
+export interface EconomyBalance {
+  name: string;
+  money: number;
 }
 
 export interface ApiPlayer {
@@ -13,6 +19,7 @@ export interface ApiPlayer {
   kills: number;
   damageDealt: number;
   damageReceived: number;
+  money?: number;
   rank?: number;
   rankChange?: number;
 }
@@ -30,7 +37,7 @@ export interface PlayerContext {
   below: Player | null;
 }
 
-export type SortMetric = 'kills' | 'damageDealt' | 'damageReceived';
+export type SortMetric = 'kills' | 'damageDealt' | 'damageReceived' | 'money';
 
 export interface PlacementHistoryPoint {
   timestamp: string;

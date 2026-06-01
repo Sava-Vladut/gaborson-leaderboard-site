@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { fetchLeaderboard } from '../api/leaderboard';
-import type { Player, SortMetric } from '../types';
+import { fetchEconomy } from '../api/economy';
+import type { EconomyBalance, Player, SortMetric } from '../types';
 
 export interface LeaderboardState {
   players: Player[];
@@ -35,8 +36,19 @@ export function useLeaderboard(): LeaderboardState {
     if (!isRefresh) setLoading(true);
     setError(null);
     try {
-      const data = await fetchLeaderboard(search, sortMetric);
-      setPlayers(data.players);
+      // Economy lives behind its own endpoint; merge balances onto the matching
+      // player records by normalized name. A failed economy fetch is non-fatal —
+      // the leaderboard still renders with $0 balances.
+      const [data, balances] = await Promise.all([
+        fetchLeaderboard(search, sortMetric),
+        fetchEconomy().catch(() => [] as EconomyBalance[]),
+      ]);
+      const moneyByName = new Map(balances.map(b => [b.name.toLowerCase(), b.money]));
+      const playersWithMoney = data.players.map(player => ({
+        ...player,
+        money: moneyByName.get(player.name.toLowerCase()) ?? player.money,
+      }));
+      setPlayers(playersWithMoney);
       setTotalPlayers(data.totalPlayers);
       setLastUpdated(new Date());
     } catch (err) {

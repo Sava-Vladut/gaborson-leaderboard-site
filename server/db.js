@@ -21,6 +21,7 @@ db.exec(`
     kills           INTEGER NOT NULL DEFAULT 0 CHECK (kills >= 0),
     damage_dealt    INTEGER NOT NULL DEFAULT 0 CHECK (damage_dealt >= 0),
     damage_received INTEGER NOT NULL DEFAULT 0 CHECK (damage_received >= 0),
+    money           INTEGER NOT NULL DEFAULT 0 CHECK (money >= 0),
     updated_at      INTEGER NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_players_kills ON players (kills DESC, name ASC);
@@ -48,6 +49,9 @@ if (!existingCols.includes('damage_dealt')) {
 if (!existingCols.includes('damage_received')) {
   db.exec('ALTER TABLE players ADD COLUMN damage_received INTEGER NOT NULL DEFAULT 0 CHECK (damage_received >= 0)');
 }
+if (!existingCols.includes('money')) {
+  db.exec('ALTER TABLE players ADD COLUMN money INTEGER NOT NULL DEFAULT 0 CHECK (money >= 0)');
+}
 
 const LIST_SQL = `
   SELECT
@@ -56,6 +60,7 @@ const LIST_SQL = `
     kills,
     damageDealt,
     damageReceived,
+    money,
     rank
   FROM (
     SELECT
@@ -64,6 +69,7 @@ const LIST_SQL = `
       kills,
       damage_dealt AS damageDealt,
       damage_received AS damageReceived,
+      money,
       ROW_NUMBER() OVER (ORDER BY __ORDER_BY__ DESC, name ASC) AS rank
     FROM players
   )
@@ -76,6 +82,7 @@ const listStmts = {
   kills: db.prepare(LIST_SQL.replaceAll('__ORDER_BY__', 'kills')),
   damageDealt: db.prepare(LIST_SQL.replaceAll('__ORDER_BY__', 'damage_dealt')),
   damageReceived: db.prepare(LIST_SQL.replaceAll('__ORDER_BY__', 'damage_received')),
+  money: db.prepare(LIST_SQL.replaceAll('__ORDER_BY__', 'money')),
 };
 
 const previousRankStmt = db.prepare(`
@@ -106,6 +113,24 @@ const upsertStmt = db.prepare(`
     damage_dealt    = players.damage_dealt + excluded.damage_dealt,
     damage_received = players.damage_received + excluded.damage_received,
     updated_at      = excluded.updated_at
+`);
+
+// Economy: money is an absolute SET (overwrite), unlike kills (MAX) and damage
+// (additive). A brand-new entity is created with zeroed kills/damage via the
+// column defaults so balances can be posted before any game stats exist.
+const setMoneyStmt = db.prepare(`
+  INSERT INTO players (name_key, name, money, updated_at)
+  VALUES (@name_key, @name, @money, @updated_at)
+  ON CONFLICT(name_key) DO UPDATE SET
+    name       = excluded.name,
+    money      = excluded.money,
+    updated_at = excluded.updated_at
+`);
+
+const listBalancesStmt = db.prepare(`
+  SELECT name, money
+  FROM players
+  ORDER BY money DESC, name ASC
 `);
 
 const countStmt = db.prepare('SELECT COUNT(*) AS n FROM players');
@@ -225,6 +250,7 @@ export function listPlayers({ search = '', limit = 100, sort = 'kills' } = {}) {
       kills: player.kills,
       damageDealt: player.damageDealt,
       damageReceived: player.damageReceived,
+      money: player.money,
       rank: player.rank,
       rankChange: previous ? previous.rank - player.rank : 0,
     };
@@ -268,6 +294,22 @@ export function upsertPlayer({ name, kills, damageDealt = 0, damageReceived = 0 
     damage_received: damageReceived,
     updated_at: Date.now(),
   });
+}
+
+export function setMoney({ name, money }) {
+  setMoneyStmt.run({
+    name_key: name.toLowerCase(),
+    name,
+    money,
+    updated_at: Date.now(),
+  });
+}
+
+export function listBalances() {
+  return listBalancesStmt.all().map((row) => ({
+    name: row.name,
+    money: row.money,
+  }));
 }
 
 export function recordPlacementSnapshot(capturedAt = Date.now()) {

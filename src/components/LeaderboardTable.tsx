@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import PlayerRow from './PlayerRow';
 import type { Player, SortMetric } from '../types';
@@ -8,6 +8,7 @@ const SORT_OPTIONS: Array<{ metric: SortMetric; label: string; shortLabel: strin
   { metric: 'kills', label: 'Kills', shortLabel: 'Kills' },
   { metric: 'damageDealt', label: 'Damage Dealt', shortLabel: 'Dealt' },
   { metric: 'damageReceived', label: 'Damage Received', shortLabel: 'Taken' },
+  { metric: 'money', label: 'Balance', shortLabel: 'Money' },
 ];
 
 interface Props {
@@ -30,7 +31,6 @@ export default function LeaderboardTable({
   const totalPages = Math.ceil(players.length / PAGE_SIZE);
   const currentPage = Math.min(page, Math.max(0, totalPages - 1));
   const slice = players.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
-  const activeSort = SORT_OPTIONS.find(option => option.metric === sortMetric) ?? SORT_OPTIONS[0];
 
   return (
     <div className="card p-3 sm:p-4">
@@ -41,28 +41,53 @@ export default function LeaderboardTable({
             All Players
           </h2>
         </div>
-        <div className="flex flex-col items-stretch gap-2 sm:items-end">
-          <div className="flex rounded-lg border border-line bg-elevated/70 p-1">
-            {SORT_OPTIONS.map(option => (
-              <button
-                key={option.metric}
-                type="button"
-                onClick={() => onSortMetricChange(option.metric)}
-                className={`rounded-md px-3 py-1.5 font-pixel text-sm uppercase tracking-wider transition-all duration-150
-                  ${option.metric === sortMetric
-                    ? 'bg-accent/15 text-accent shadow-[0_0_18px_rgba(0,224,255,0.10)]'
-                    : 'text-ink-ghost hover:text-ink-dim'
-                  }`}
-                aria-pressed={option.metric === sortMetric}
-              >
-                <span className="sm:hidden">{option.shortLabel}</span>
-                <span className="hidden sm:inline">{option.label}</span>
-              </button>
-            ))}
-          </div>
-          <div className="hidden sm:flex items-center text-base font-pixel text-ink-ghost uppercase tracking-wider pr-1">
-            <span className="w-32 text-right">{activeSort.label}</span>
-          </div>
+        <div className="flex rounded-lg border border-line bg-elevated/70 p-1">
+          {SORT_OPTIONS.map(option => (
+            <button
+              key={option.metric}
+              type="button"
+              onClick={() => onSortMetricChange(option.metric)}
+              className={`rounded-md px-3 py-1.5 font-pixel text-sm uppercase tracking-wider transition-all duration-150
+                ${option.metric === sortMetric
+                  ? 'bg-accent/15 text-accent shadow-[0_0_18px_rgba(0,224,255,0.10)]'
+                  : 'text-ink-ghost hover:text-ink-dim'
+                }`}
+              aria-pressed={option.metric === sortMetric}
+            >
+              <span className="sm:hidden">{option.shortLabel}</span>
+              <span className="hidden sm:inline">{option.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Column header — aligned to the metric grid; labels double as sort toggles */}
+      <div className="hidden md:flex items-center gap-4 px-4 mb-2 pb-2.5 border-b border-line/60
+        font-pixel text-[11px] uppercase tracking-[0.18em]">
+        <span className="w-12 text-center text-ink-ghost/70">#</span>
+        <span className="w-10" aria-hidden="true" />
+        <span className="flex-1 text-ink-ghost/70">Player</span>
+        <div className="flex items-center gap-4 lg:gap-6">
+          {SORT_OPTIONS.map(option => {
+            const active = option.metric === sortMetric;
+            const isMoney = option.metric === 'money';
+            const tone = isMoney
+              ? active ? 'text-success' : 'text-success/45 hover:text-success/80'
+              : active ? 'text-accent' : 'text-ink-ghost/60 hover:text-ink-dim';
+            return (
+              <Fragment key={option.metric}>
+                {isMoney && <span className="w-px" aria-hidden="true" />}
+                <button
+                  type="button"
+                  onClick={() => onSortMetricChange(option.metric)}
+                  aria-pressed={active}
+                  className={`w-16 lg:w-20 text-right uppercase tracking-[0.18em] transition-colors duration-150 ${tone}`}
+                >
+                  {option.shortLabel}
+                </button>
+              </Fragment>
+            );
+          })}
         </div>
       </div>
 

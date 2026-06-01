@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { X, Crown, Medal, ChevronUp, ChevronDown, Shield } from 'lucide-react';
 import { fetchPlayerContext } from '../api/leaderboard';
+import { formatMoney } from '../api/economy';
 import type { Player, PlayerContext } from '../types';
 import PlacementHistoryChart from './PlacementHistoryChart';
 
@@ -81,6 +82,7 @@ export default function PlayerProfileModal({ player, players, totalPlayers: fall
     { label: 'Kills',       value: fmt(player.kills),                        sub: player.kills.toLocaleString(),                   cls: 'text-ink'      },
     { label: 'Damage Dealt',  value: fmt(player.damageDealt),                sub: player.damageDealt.toLocaleString(),             cls: 'text-gold'     },
     { label: 'Damage Taken',  value: fmt(player.damageReceived),             sub: player.damageReceived.toLocaleString(),          cls: 'text-danger'   },
+    { label: 'Balance',     value: formatMoney(player.money),                sub: 'wallet',                                        cls: 'text-success'  },
     { label: 'Global Rank', value: `#${player.rank}`,                        sub: `of ${totalPlayers} players`,                    cls: 'text-accent'   },
     { label: 'Kills %',     value: `${killsRating}%`,                        sub: 'of leader kills',                               cls: 'text-ink-dim'  },
     { label: 'Outranked',   value: `${100 - topPct}%`,                       sub: 'of field behind',                               cls: 'text-ink-dim'  },

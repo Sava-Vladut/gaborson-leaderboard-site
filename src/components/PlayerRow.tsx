@@ -1,5 +1,10 @@
+import { Fragment } from 'react';
 import { ArrowDown, ArrowUp } from 'lucide-react';
+import { formatMoney } from '../api/economy';
 import type { Player, SortMetric } from '../types';
+
+// Column order for the per-metric grid, matching the leaderboard sort tabs.
+const METRIC_ORDER: SortMetric[] = ['kills', 'damageDealt', 'damageReceived', 'money'];
 
 const RANK_STYLE: Record<number, { text: string; bg: string; border: string }> = {
   1: { text: 'text-gold glow-gold', bg: 'bg-gold/5',   border: 'border-gold/30' },
@@ -80,11 +85,32 @@ export default function PlayerRow({ player, position, maxMetricValue, sortMetric
         </div>
       </div>
 
-      {/* Active metric */}
-      <div className={`flex-shrink-0 font-pixel text-xl text-right transition-colors duration-200
-        ${top ? rs.text : 'text-ink-dim group-hover:text-ink'}`}>
-        {metricValue.toLocaleString()}
+      {/* Desktop: full metric grid — kills · dealt · taken · balance.
+         The active sort column is highlighted; a hairline sets balance apart. */}
+      <div className="hidden md:flex items-center gap-4 lg:gap-6 flex-shrink-0">
+        {METRIC_ORDER.map(key => {
+          const active = sortMetric === key;
+          const isMoney = key === 'money';
+          const value = isMoney ? formatMoney(player.money) : player[key].toLocaleString();
+          const tone = isMoney
+            ? active ? 'text-success' : 'text-success/55 group-hover:text-success/80'
+            : active ? (top ? rs.text : 'text-accent') : 'text-ink-ghost group-hover:text-ink-dim';
+          return (
+            <Fragment key={key}>
+              {isMoney && <span className="w-px h-6 bg-line/70" aria-hidden="true" />}
+              <span className={`w-16 lg:w-20 text-right font-pixel text-lg tabular-nums transition-colors duration-200 ${tone}`}>
+                {value}
+              </span>
+            </Fragment>
+          );
+        })}
       </div>
+
+      {/* Mobile / tablet: just the active metric to keep the row compact */}
+      <span className={`md:hidden flex-shrink-0 w-20 text-right font-pixel text-xl tabular-nums transition-colors duration-200
+        ${top ? rs.text : 'text-ink-dim group-hover:text-ink'}`}>
+        {sortMetric === 'money' ? formatMoney(metricValue) : metricValue.toLocaleString()}
+      </span>
     </div>
   );
 }

@@ -6,9 +6,11 @@ import {
   countPlayers,
   getPlayerContext,
   importJsonIfEmpty,
+  listBalances,
   listPlacementHistory,
   listPlayers,
   recordPlacementSnapshot,
+  setMoney,
   upsertPlayer,
 } from './db.js';
 
@@ -81,6 +83,26 @@ function normalizePlayer(input) {
   return { player: { name, kills, damageDealt, damageReceived } };
 }
 
+function normalizeBalance(input) {
+  const name = String(input.name ?? input.playerName ?? '').trim();
+
+  if (!name) {
+    return { error: 'name is required' };
+  }
+
+  if (name.length > 40) {
+    return { error: 'name must be 40 characters or fewer' };
+  }
+
+  const money = Number(input.money);
+  if (!Number.isFinite(money)) {
+    return { error: 'money must be a number' };
+  }
+
+  // Money is an absolute set: clamp negatives to 0 and floor to whole dollars.
+  return { balance: { name, money: Math.max(0, Math.floor(money)) } };
+}
+
 function handleGetLeaderboard(url, res) {
   const search = url.searchParams.get('search') ?? '';
   const sort = url.searchParams.get('sort') ?? 'kills';
@@ -143,6 +165,24 @@ async function handlePostLeaderboard(req, res) {
   sendJson(res, 201, { ok: true, player, leaderboard: listPlayers() });
 }
 
+function handleGetEconomy(res) {
+  // Bare array, mirroring GET /api/leaderboard's shape for the Unity client.
+  sendJson(res, 200, listBalances());
+}
+
+async function handlePostEconomy(req, res) {
+  const body = await readJsonBody(req);
+  const { balance, error } = normalizeBalance(body);
+
+  if (error) {
+    sendError(res, 400, error);
+    return;
+  }
+
+  setMoney(balance);
+  sendJson(res, 201, { ok: true, balance });
+}
+
 const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
 
@@ -182,6 +222,16 @@ const server = createServer(async (req, res) => {
 
     if (url.pathname === '/api/leaderboard' && req.method === 'POST') {
       await handlePostLeaderboard(req, res);
+      return;
+    }
+
+    if (url.pathname === '/api/economy' && req.method === 'GET') {
+      handleGetEconomy(res);
+      return;
+    }
+
+    if (url.pathname === '/api/economy' && req.method === 'POST') {
+      await handlePostEconomy(req, res);
       return;
     }
 

@@ -9,7 +9,15 @@
       "Bash(node *)",
       "PowerShell(Stop-Process *)",
       "PowerShell(npx tsc -b 2>&1 | Select-Object -First 30; \"TSC_EXIT=$LASTEXITCODE\")",
-      "PowerShell(node -e \"const db=new\\(require\\('node:sqlite'\\).DatabaseSync\\)\\('server/leaderboard.db'\\);const r=db.prepare\\('DELETE FROM players WHERE name_key IN \\(?,?\\)'\\).run\\('dmgtest','legacyguy'\\);console.log\\('deleted',r.changes,'test rows'\\)\")"
+      "PowerShell(node -e \"const db=new\\(require\\('node:sqlite'\\).DatabaseSync\\)\\('server/leaderboard.db'\\);const r=db.prepare\\('DELETE FROM players WHERE name_key IN \\(?,?\\)'\\).run\\('dmgtest','legacyguy'\\);console.log\\('deleted',r.changes,'test rows'\\)\")",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(curl -s -X POST http://127.0.0.1:3099/api/economy -H \"Content-Type: application/json\" -d '{\"name\":\"Player\",\"money\":1250}')",
+      "Bash(curl -s -X POST http://127.0.0.1:3099/api/economy -H \"Content-Type: application/json\" -d '{\"name\":\"Bot_03\",\"money\":500}')",
+      "Bash(curl -s -X POST http://127.0.0.1:3099/api/economy -H \"Content-Type: application/json\" -d '{\"name\":\"Player\",\"money\":900}')",
+      "Bash(curl -s -X POST http://127.0.0.1:3099/api/economy -H \"Content-Type: application/json\" -d '{\"name\":\"Bot_03\",\"money\":-50}')",
+      "Bash(curl -s http://127.0.0.1:3099/api/economy)",
+      "Bash(npx eslint *)",
+      "Bash(echo \"LINT EXIT: $?\")"
     ]
   }
 }

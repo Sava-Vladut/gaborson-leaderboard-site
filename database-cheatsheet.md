@@ -63,6 +63,17 @@ Rules enforced by the server (see `server/server.js` `normalizePlayer` and `valu
 - `kills` keeps the **max** — smaller POSTs are silent no-ops
 - `damageDealt` / `damageReceived` are **cumulative** — every POST is added to the stored total (send per-match deltas)
 
+### Economy (money) — absolute SET
+
+`money` lives on the same `players` row, keyed by the same `name`. Unlike damage, a POST **overwrites** the balance (money goes down when spent). Negatives clamp to `0`.
+
+```powershell
+# set a balance (overwrite); GET returns a bare array of { name, money }
+$body = @{ name = 'TestPlayer'; money = 1250 } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:3001/api/economy -ContentType 'application/json' -Body $body
+Invoke-RestMethod -Uri http://127.0.0.1:3001/api/economy
+```
+
 ### Directly against the DB (manual fixup, bypasses high-water-mark)
 
 ```powershell

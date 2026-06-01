@@ -203,6 +203,68 @@ public class GameOverExample : MonoBehaviour
 
 > Damage values must be whole numbers. If your game tracks damage as a `float`, round before sending: `Mathf.RoundToInt(damageThisMatch)`.
 
+## Economy (Money)
+
+The Economy system tracks a **money balance** per entity (players and bots), keyed by the **same `name`** as the leaderboard (use the normalized display name — strip difficulty suffixes like `[Hard]` first, exactly as you do for leaderboard rows). Balances are stored on the same player record and persist across sessions in the same database.
+
+Endpoint (same conventions as the leaderboard):
+
+```text
+http://localhost:3001/api/economy
+```
+
+> **Important — money is an absolute SET, not an add.** Unlike damage (which the server **adds**), a `POST /api/economy` **overwrites** the stored balance with the exact value you send, because money goes **down** when spent. The client is authoritative for the session: fetch the balance on load, apply kill rewards / spending locally, then post the resulting total.
+
+### Get all balances
+
+`GET /api/economy` returns a bare JSON array (empty `[]` if none):
+
+```json
+[
+  { "name": "Player", "money": 1250 },
+  { "name": "Bot_03", "money": 500 }
+]
+```
+
+### Set a balance
+
+`POST /api/economy` with:
+
+```json
+{ "name": "Player", "money": 1250 }
+```
+
+Rules:
+
+- `name` is required (the normalized display name).
+- `money` is a non-negative whole number of dollars. **Negatives are clamped to `0`** and fractional values are floored.
+- The value **replaces** (does not add to) the stored balance.
+
+### Unity C# example
+
+```csharp
+[System.Serializable]
+private class MoneyPayload
+{
+    public string name;
+    public int money;
+}
+
+// Overwrite the entity's balance with the current session total.
+public IEnumerator SetMoney(string name, int money)
+{
+    MoneyPayload payload = new MoneyPayload { name = name, money = Mathf.Max(0, money) };
+    byte[] body = Encoding.UTF8.GetBytes(JsonUtility.ToJson(payload));
+
+    using UnityWebRequest request = new UnityWebRequest("http://localhost:3001/api/economy", "POST");
+    request.uploadHandler = new UploadHandlerRaw(body);
+    request.downloadHandler = new DownloadHandlerBuffer();
+    request.SetRequestHeader("Content-Type", "application/json");
+
+    yield return request.SendWebRequest();
+}
+```
+
 ## Test with curl
 
 Before testing in Unity, confirm the backend works:
@@ -217,6 +279,16 @@ Then check the leaderboard:
 
 ```bash
 curl http://localhost:3001/api/leaderboard
+```
+
+And the economy (set then read a balance):
+
+```bash
+curl -X POST http://localhost:3001/api/economy \
+  -H "Content-Type: application/json" \
+  -d '{"name":"UnityPlayer","money":1250}'
+
+curl http://localhost:3001/api/economy
 ```
 
 ## Common Issues

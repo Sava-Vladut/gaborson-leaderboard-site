@@ -7,6 +7,7 @@ function normalize(data: ApiPlayer[]): Player[] {
       kills: Number(p.kills ?? 0),
       damageDealt: Number(p.damageDealt ?? 0),
       damageReceived: Number(p.damageReceived ?? 0),
+      money: Number(p.money ?? 0),
       rank: Number(p.rank ?? i + 1),
       rankChange: Number(p.rankChange ?? 0),
       id: `${Number(p.rank ?? i + 1)}-${String(p.name ?? '').trim().toLowerCase()}`,
