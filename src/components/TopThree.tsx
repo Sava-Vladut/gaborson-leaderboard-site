@@ -16,24 +16,27 @@ const CFG = {
     rank:   'text-gold glow-gold',
     badge:  'bg-gold/15 border-gold/35 text-gold',
     podium: 'h-[7.5rem] bg-gradient-to-t from-gold/25 to-transparent border-t border-gold/35',
+    sheen:  'podium-sheen-gold',
     extra:  'pt-4',
   },
   2: {
     label: 'RUNNER-UP',
     Icon: Medal,
     card:   'border-silver/20 bg-gradient-to-b from-silver/5 via-surface to-surface shadow-glow-silver',
-    rank:   'text-silver',
+    rank:   'text-silver glow-silver',
     badge:  'bg-silver/10 border-silver/30 text-silver',
     podium: 'h-[5.25rem] bg-gradient-to-t from-silver/15 to-transparent border-t border-silver/25',
+    sheen:  'podium-sheen-silver',
     extra:  'pt-2',
   },
   3: {
     label: 'THIRD',
     Icon: Medal,
     card:   'border-bronze/20 bg-gradient-to-b from-bronze/5 via-surface to-surface shadow-glow-bronze',
-    rank:   'text-bronze',
+    rank:   'text-bronze glow-bronze',
     badge:  'bg-bronze/10 border-bronze/30 text-bronze',
     podium: 'h-[3.75rem] bg-gradient-to-t from-bronze/15 to-transparent border-t border-bronze/25',
+    sheen:  'podium-sheen-bronze',
     extra:  'pt-2',
   },
 } as const;
@@ -75,16 +78,14 @@ function PodiumCard({
       <div className={`relative w-full max-w-[293px] rounded-xl border ${cfg.card} ${cfg.extra} p-7 flex flex-col items-center gap-4 bracket
         transition-colors duration-200`}>
 
-        {/* Champion light-sheen sweep */}
-        {placement === 1 && (
-          <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl" aria-hidden="true">
-            <span className="champion-sheen" />
-          </span>
-        )}
+        {/* Podium light-sheen sweep */}
+        <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl" aria-hidden="true">
+          <span className={`podium-sheen ${cfg.sheen}`} />
+        </span>
 
         {/* Badge */}
         <span className={`relative flex items-center gap-2 text-lg font-pixel uppercase tracking-widest border px-3 py-1.5 rounded-md ${cfg.badge}`}>
-          <Icon className={`w-6 h-6 ${placement === 1 ? 'drop-shadow-[0_0_8px_rgba(240,184,48,0.7)]' : ''}`} />
+          <Icon className={`w-6 h-6 ${cfg.rank}`} />
           {cfg.label}
         </span>
 

@@ -172,12 +172,24 @@
   animation: shimmer 1.8s linear infinite;
 }
 
-/* Gold rank glow */
+/* Podium rank glows */
 @keyframes goldGlow {
   0%, 100% { text-shadow: 0 0 8px rgba(240,184,48,0.4); }
   50%       { text-shadow: 0 0 18px rgba(240,184,48,0.85), 0 0 32px rgba(240,184,48,0.35); }
 }
 .glow-gold { animation: goldGlow 2.5s ease-in-out infinite; }
+
+@keyframes silverGlow {
+  0%, 100% { text-shadow: 0 0 8px rgba(154,176,200,0.35); }
+  50%       { text-shadow: 0 0 18px rgba(154,176,200,0.8), 0 0 30px rgba(154,176,200,0.3); }
+}
+.glow-silver { animation: silverGlow 2.8s ease-in-out infinite; }
+
+@keyframes bronzeGlow {
+  0%, 100% { text-shadow: 0 0 8px rgba(200,120,64,0.35); }
+  50%       { text-shadow: 0 0 18px rgba(200,120,64,0.78), 0 0 30px rgba(200,120,64,0.28); }
+}
+.glow-bronze { animation: bronzeGlow 3s ease-in-out infinite; }
 
 /* Cyan live dot pulse */
 @keyframes livePulse {
@@ -220,16 +232,26 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Champion light-sheen sweep — draws the eye to the #1 podium card */
-.champion-sheen {
+/* Podium light-sheen sweep */
+.podium-sheen {
   position: absolute;
   top: 0;
   left: 0;
   width: 45%;
   height: 100%;
-  background: linear-gradient(100deg, transparent, rgba(255, 224, 128, 0.16), transparent);
   transform: translateX(-180%) skewX(-18deg);
   animation: sheenSweep 5s ease-in-out infinite;
+}
+.podium-sheen-gold {
+  background: linear-gradient(100deg, transparent, rgba(255, 224, 128, 0.16), transparent);
+}
+.podium-sheen-silver {
+  background: linear-gradient(100deg, transparent, rgba(214, 232, 255, 0.12), transparent);
+  animation-delay: 0.35s;
+}
+.podium-sheen-bronze {
+  background: linear-gradient(100deg, transparent, rgba(255, 178, 112, 0.12), transparent);
+  animation-delay: 0.7s;
 }
 @keyframes sheenSweep {
   0%        { transform: translateX(-180%) skewX(-18deg); }
@@ -255,7 +277,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .champion-sheen,
+  .podium-sheen,
   .row-sheen { animation: none; display: none; }
 
   /* Keep animations effectively instant (0.01ms so animationend still fires
