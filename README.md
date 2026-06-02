@@ -24,6 +24,27 @@ npm run dev
 
 Open `http://localhost:5173`. The frontend proxies `/api/leaderboard` to the backend at `http://localhost:3001`.
 
+## Run with Docker
+
+Build and start the production containers:
+
+```bash
+docker compose build
+docker compose up -d
+```
+
+Open `http://localhost:5173`. The Nginx container serves the built frontend and
+proxies `/api/*` to the Node API container.
+
+SQLite data is persisted in the `leaderboard-data` Docker volume at
+`/data/leaderboard.db` inside the API container.
+
+For a deployed domain, set the allowed API origin before starting:
+
+```bash
+CORS_ORIGIN=https://yourdomain.com docker compose up -d
+```
+
 ## API
 
 ### Get leaderboard

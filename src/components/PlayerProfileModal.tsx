@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { X, Crown, Medal, ChevronUp, ChevronDown, Shield } from 'lucide-react';
 import { fetchPlayerContext } from '../api/leaderboard';
 import { formatMoney } from '../api/economy';
@@ -41,7 +41,10 @@ interface Props { player: Player; players: Player[]; totalPlayers: number; onClo
 
 export default function PlayerProfileModal({ player, players, totalPlayers: fallbackTotalPlayers, onClose }: Props) {
   const ref     = useRef<HTMLDivElement>(null);
+  const [closing, setClosing] = useState(false);
   const [context, setContext] = useState<PlayerContext | null>(null);
+  // Trigger the exit animation, then unmount once the panel finishes animating.
+  const close = useCallback(() => setClosing(true), []);
   const activeContext = context?.player.name.toLowerCase() === player.name.toLowerCase() ? context : null;
   const color   = playerColor(player.name);
   const badge   = RANK_BADGE[player.rank];
@@ -57,11 +60,11 @@ export default function PlayerProfileModal({ player, players, totalPlayers: fall
   const gapDown      = playerBelow ? player.kills - playerBelow.kills : null;
 
   useEffect(() => {
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
     document.addEventListener('keydown', esc);
     document.body.style.overflow = 'hidden';
     return () => { document.removeEventListener('keydown', esc); document.body.style.overflow = ''; };
-  }, [onClose]);
+  }, [close]);
 
   useEffect(() => {
     let cancelled = false;
@@ -91,20 +94,21 @@ export default function PlayerProfileModal({ player, players, totalPlayers: fall
   return (
     <div
       ref={ref}
-      className="fixed inset-0 bg-void/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-6 animate-fade-in overflow-y-auto"
-      onClick={e => { if (e.target === ref.current) onClose(); }}
+      className={`fixed inset-0 bg-void/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto ${closing ? 'backdrop-exit' : 'backdrop-enter'}`}
+      onClick={e => { if (e.target === ref.current) close(); }}
     >
       <div
-        className="modal-enter w-full max-w-3xl bg-surface border border-line rounded-2xl overflow-hidden relative my-auto"
+        className={`${closing ? 'modal-exit' : 'modal-enter'} w-full max-w-3xl bg-surface border border-line rounded-2xl overflow-hidden relative my-auto`}
         style={{ boxShadow: `0 0 0 1px ${color}18, 0 40px 80px rgba(0,0,0,0.6), 0 0 60px ${color}10` }}
+        onAnimationEnd={e => { if (closing && e.target === e.currentTarget) onClose(); }}
       >
         {/* Top stripe */}
         <div className="h-1 w-full" style={{ background: `linear-gradient(90deg, transparent 0%, ${color} 40%, ${color} 60%, transparent 100%)` }} />
 
         {/* Close */}
         <button
-          onClick={onClose}
-          className="absolute top-4 right-4 z-20 w-8 h-8 rounded-lg bg-elevated border border-line flex items-center justify-center text-ink-ghost hover:text-ink hover:border-line-bright transition-all duration-150"
+          onClick={close}
+          className="absolute top-4 right-4 z-20 w-8 h-8 rounded-lg bg-elevated border border-line flex items-center justify-center text-ink-ghost hover:text-ink hover:border-line-bright active:scale-95 transition-all duration-150"
         >
           <X className="w-4 h-4" />
         </button>

@@ -17,7 +17,7 @@ export interface LeaderboardState {
   setSearchQuery: (q: string) => void;
   selectedPlayer: Player | null;
   setSelectedPlayer: (p: Player | null) => void;
-  refresh: () => void;
+  refresh: () => Promise<void>;
 }
 
 export function useLeaderboard(): LeaderboardState {

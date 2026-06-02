@@ -40,8 +40,16 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-void flex flex-col">
-      {/* Ambient top glow */}
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[900px] h-[260px] bg-accent/[0.035] rounded-full blur-3xl pointer-events-none" />
+      {/* Atmosphere — layered grid, ambient glows, vignette, grain & scanlines */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute inset-0 bg-grid" />
+        <div className="absolute -top-48 left-1/2 -translate-x-1/2 w-[900px] h-[300px] bg-accent/[0.05] rounded-full blur-[120px]" />
+        <div className="absolute -top-32 -left-40 w-[560px] h-[560px] bg-accent/[0.04] rounded-full blur-[130px]" />
+        <div className="absolute top-1/3 -right-48 w-[560px] h-[560px] bg-gold/[0.03] rounded-full blur-[130px]" />
+        <div className="absolute inset-0 bg-vignette" />
+        <div className="absolute inset-0 bg-grain opacity-[0.05] mix-blend-overlay" />
+        <div className="absolute inset-0 scanlines opacity-50" />
+      </div>
 
       <Header lastUpdated={lastUpdated} />
 

@@ -10,14 +10,8 @@ interface Props {
 
 const WIDTH = 520;
 const HEIGHT = 160;
-const PAD_X = 34;
+const PAD_X = 42;
 const PAD_Y = 22;
-
-function fmtTooltipDate(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-}
 
 function linePath(points: Array<{ x: number; y: number }>): string {
   return points.map((point, i) => `${i === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
@@ -76,15 +70,12 @@ export default function PlacementHistoryChart({ player, color }: Props) {
     const bestRank = Math.min(...points.map(point => point.rank));
     const worstRank = Math.max(...points.map(point => point.rank));
     const rankSpan = Math.max(1, worstRank - bestRank);
-    const minTime = Date.parse(points[0].timestamp);
-    const maxTime = Date.parse(points[points.length - 1].timestamp);
-    const timeSpan = Math.max(1, maxTime - minTime);
+    const entrySpan = Math.max(1, points.length - 1);
 
-    const coords = points.map(point => {
-      const time = Date.parse(point.timestamp);
-      const x = PAD_X + ((time - minTime) / timeSpan) * (WIDTH - PAD_X * 2);
+    const coords = points.map((point, index) => {
+      const x = PAD_X + (index / entrySpan) * (WIDTH - PAD_X * 2);
       const y = PAD_Y + ((point.rank - bestRank) / rankSpan) * (HEIGHT - PAD_Y * 2);
-      return { x, y, point };
+      return { x, y, point, entry: index + 1 };
     });
 
     return {
@@ -160,6 +151,13 @@ export default function PlacementHistoryChart({ player, color }: Props) {
                 );
               })}
 
+              <text x={PAD_X} y={HEIGHT - 6} fill="rgba(199,213,227,0.46)" fontSize="10" fontFamily="monospace">
+                Entry 1
+              </text>
+              <text x={WIDTH - PAD_X} y={HEIGHT - 6} textAnchor="end" fill="rgba(199,213,227,0.46)" fontSize="10" fontFamily="monospace">
+                Entry {chart.coords.length}
+              </text>
+
               <path
                 d={`${chart.path} L ${chart.coords[chart.coords.length - 1].x} ${HEIGHT - PAD_Y} L ${chart.coords[0].x} ${HEIGHT - PAD_Y} Z`}
                 fill={`url(#${gradientId})`}
@@ -184,7 +182,6 @@ export default function PlacementHistoryChart({ player, color }: Props) {
                   boxShadow: `0 0 0 1px ${color}25, 0 12px 26px rgba(0,0,0,0.45)`,
                 }}
               >
-                <p className="text-base text-ink-ghost uppercase tracking-wider">{fmtTooltipDate(hovered.point.timestamp)}</p>
                 <p className="text-xl text-ink">Rank #{hovered.point.rank}</p>
                 {hovered.point.kills !== undefined && (
                   <p className="text-base text-accent">{hovered.point.kills.toLocaleString()} kills</p>

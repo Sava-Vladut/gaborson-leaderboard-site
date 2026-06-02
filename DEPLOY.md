@@ -20,6 +20,36 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 The app reads leaderboard data from the backend API. If the backend is not running, the UI shows a connection error instead of generated demo data.
 
+### Run with Docker Compose
+
+The production container setup builds the React app into an Nginx image and runs
+the Node API in a separate container. SQLite data is stored in a named Docker
+volume.
+
+```bash
+docker compose build
+docker compose up -d
+```
+
+Open [http://localhost:5173](http://localhost:5173).
+
+Useful checks:
+
+```bash
+curl http://localhost:5173/health
+curl http://localhost:5173/api/leaderboard
+```
+
+Unity and other clients should post to:
+
+```text
+http://localhost:5173/api/leaderboard
+```
+
+The API container stores SQLite at `/data/leaderboard.db`, backed by the
+`leaderboard-data` Docker volume. Rebuilding containers will not delete the
+database; removing the volume will.
+
 ### Connecting to a real backend locally
 
 If you have a backend API running on your machine (e.g. on port 3001), it is already proxied — `GET /api/leaderboard` in the browser will forward to `http://localhost:3001/api/leaderboard`.

@@ -43,6 +43,11 @@ export default function PlayerRow({ player, position, maxMetricValue, sortMetric
         ${position === 1 ? 'animate-pulse-glow' : ''}
       `}
     >
+      {/* Hover sheen sweep */}
+      <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-lg" aria-hidden="true">
+        <span className="row-sheen" />
+      </span>
+
       {/* Left accent stripe */}
       <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-2/3 rounded-full transition-opacity duration-200
         ${top ? 'opacity-100' : 'opacity-0 group-hover:opacity-80'}

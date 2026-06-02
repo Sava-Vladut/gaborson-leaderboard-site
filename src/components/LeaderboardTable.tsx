@@ -47,7 +47,7 @@ export default function LeaderboardTable({
               key={option.metric}
               type="button"
               onClick={() => onSortMetricChange(option.metric)}
-              className={`rounded-md px-3 py-1.5 font-pixel text-sm uppercase tracking-wider transition-all duration-150
+              className={`rounded-md px-3 py-1.5 font-pixel text-sm uppercase tracking-wider transition-all duration-150 active:scale-95
                 ${option.metric === sortMetric
                   ? 'bg-accent/15 text-accent shadow-[0_0_18px_rgba(0,224,255,0.10)]'
                   : 'text-ink-ghost hover:text-ink-dim'
@@ -127,7 +127,7 @@ export default function LeaderboardTable({
               <button
                 key={i}
                 onClick={() => setPage(i)}
-                className={`w-9 h-9 rounded font-pixel text-sm transition-all duration-150
+                className={`w-9 h-9 rounded font-pixel text-sm transition-all duration-150 active:scale-90
                   ${i === currentPage
                     ? 'bg-accent/20 border border-accent/40 text-accent'
                     : 'text-ink-ghost hover:text-ink-dim'

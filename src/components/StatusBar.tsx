@@ -1,12 +1,26 @@
+import { useState } from 'react';
 import { RefreshCw, AlertCircle } from 'lucide-react';
 
 interface Props {
-  onRefresh: () => void;
+  onRefresh: () => void | Promise<void>;
   totalPlayers: number;
   error: string | null;
 }
 
 export default function StatusBar({ onRefresh, totalPlayers, error }: Props) {
+  const [spinning, setSpinning] = useState(false);
+
+  const handleRefresh = async () => {
+    if (spinning) return;
+    setSpinning(true);
+    // Spin for at least one full rotation so a fast fetch still reads as intentional.
+    await Promise.all([
+      Promise.resolve(onRefresh()),
+      new Promise(resolve => setTimeout(resolve, 600)),
+    ]);
+    setSpinning(false);
+  };
+
   return (
     <div className="sticky bottom-0 left-0 right-0 bg-surface/90 border-t border-line backdrop-blur-md px-6 py-3 z-40">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
@@ -23,8 +37,8 @@ export default function StatusBar({ onRefresh, totalPlayers, error }: Props) {
           <span className="hidden sm:block text-base font-pixel text-ink-ghost">
             {totalPlayers} players ranked
           </span>
-          <button onClick={onRefresh} className="btn-ghost flex items-center gap-2">
-            <RefreshCw className="w-4 h-4" /> Refresh
+          <button onClick={handleRefresh} className="btn-ghost flex items-center gap-2">
+            <RefreshCw className={`w-4 h-4 ${spinning ? 'animate-[spin_0.6s_linear_infinite]' : ''}`} /> Refresh
           </button>
         </div>
       </div>

@@ -75,9 +75,16 @@ function PodiumCard({
       <div className={`relative w-full max-w-[293px] rounded-xl border ${cfg.card} ${cfg.extra} p-7 flex flex-col items-center gap-4 bracket
         transition-colors duration-200`}>
 
+        {/* Champion light-sheen sweep */}
+        {placement === 1 && (
+          <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl" aria-hidden="true">
+            <span className="champion-sheen" />
+          </span>
+        )}
+
         {/* Badge */}
-        <span className={`flex items-center gap-2 text-lg font-pixel uppercase tracking-widest border px-3 py-1.5 rounded-md ${cfg.badge}`}>
-          <Icon className="w-6 h-6" />
+        <span className={`relative flex items-center gap-2 text-lg font-pixel uppercase tracking-widest border px-3 py-1.5 rounded-md ${cfg.badge}`}>
+          <Icon className={`w-6 h-6 ${placement === 1 ? 'drop-shadow-[0_0_8px_rgba(240,184,48,0.7)]' : ''}`} />
           {cfg.label}
         </span>
 
@@ -86,7 +93,7 @@ function PodiumCard({
           <p className="font-pixel text-3xl text-ink leading-tight truncate max-w-[210px]">
             {player.name}
           </p>
-          <p className={`font-pixel text-5xl mt-1.5 ${cfg.rank}`}>
+          <p key={sortMetric} className={`value-pop font-pixel text-5xl mt-1.5 ${cfg.rank}`}>
             {sortMetric === 'money' ? formatMoney(metricValue) : fmt(metricValue)}
           </p>
           <p className="font-pixel text-lg text-ink-ghost uppercase tracking-wider mt-1.5">
