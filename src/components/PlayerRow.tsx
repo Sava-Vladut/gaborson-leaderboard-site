@@ -1,5 +1,4 @@
 import { Fragment } from 'react';
-import { ArrowDown, ArrowUp } from 'lucide-react';
 import { formatMoney } from '../api/economy';
 import type { Player, SortMetric } from '../types';
 
@@ -28,7 +27,6 @@ export default function PlayerRow({ player, position, maxMetricValue, sortMetric
   const rs    = RANK_STYLE[position];
   const metricValue = player[sortMetric];
   const fill  = Math.max(2, (metricValue / maxMetricValue) * 100);
-  const rankChange = player.rankChange ?? 0;
 
   return (
     <div
@@ -58,22 +56,6 @@ export default function PlayerRow({ player, position, maxMetricValue, sortMetric
       <div className={`flex-shrink-0 w-12 text-center font-pixel text-xl
         ${top ? rs.text : 'text-ink-ghost group-hover:text-ink-dim transition-colors duration-200'}`}>
         {position < 10 ? `0${position}` : position}
-      </div>
-
-      <div className="flex-shrink-0 w-10 flex justify-center">
-        {rankChange > 0 ? (
-          <span className="inline-flex items-center gap-0.5 font-pixel text-base text-success" title={`Up ${rankChange} rank${rankChange === 1 ? '' : 's'}`}>
-            <ArrowUp className="w-4 h-4" />
-            {rankChange}
-          </span>
-        ) : rankChange < 0 ? (
-          <span className="inline-flex items-center gap-0.5 font-pixel text-base text-danger" title={`Down ${Math.abs(rankChange)} rank${rankChange === -1 ? '' : 's'}`}>
-            <ArrowDown className="w-4 h-4" />
-            {Math.abs(rankChange)}
-          </span>
-        ) : (
-          <span className="sr-only">No rank change</span>
-        )}
       </div>
 
       {/* Name + kills bar */}

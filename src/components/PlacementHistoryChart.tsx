@@ -182,7 +182,7 @@ export default function PlacementHistoryChart({ player, color }: Props) {
       <div className="flex items-center justify-between gap-3 mb-3">
         <div className="flex items-center gap-2">
           <TrendingUp className="w-4 h-4" style={{ color }} />
-          <p className="text-xl font-pixel text-ink-ghost uppercase tracking-widest">Placement Over Time</p>
+          <p className="text-xl font-pixel text-ink-ghost uppercase tracking-widest">Placement Over Last Week</p>
         </div>
         <div className="flex items-center gap-2">
           {isZoomed && (

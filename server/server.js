@@ -19,6 +19,7 @@ const DATA_FILE = process.env.LEADERBOARD_DATA_FILE ?? join(__dirname, 'leaderbo
 const PORT = Number(process.env.PORT ?? 3001);
 const HOST = process.env.HOST ?? '127.0.0.1';
 const MAX_BODY_BYTES = 1024 * 16;
+const PLACEMENT_HISTORY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 function sendJson(res, status, data) {
   const body = JSON.stringify(data);
@@ -147,8 +148,7 @@ function handleGetPlacementHistory(url, res) {
     return;
   }
 
-  const limit = Number(url.searchParams.get('limit') ?? 100);
-  sendJson(res, 200, listPlacementHistory(name, limit));
+  sendJson(res, 200, listPlacementHistory(name, Date.now() - PLACEMENT_HISTORY_WINDOW_MS));
 }
 
 async function handlePostLeaderboard(req, res) {

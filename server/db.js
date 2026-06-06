@@ -175,8 +175,8 @@ const historyStmt = db.prepare(`
     damage_received AS damageReceived
   FROM placement_history
   WHERE name_key = @name_key
+    AND captured_at >= @since
   ORDER BY captured_at ASC
-  LIMIT @limit
 `);
 
 const playerContextStmt = db.prepare(`
@@ -347,10 +347,10 @@ export function recordPlacementSnapshot(capturedAt = Date.now()) {
   return changedRows.length;
 }
 
-export function listPlacementHistory(name, limit = 100) {
+export function listPlacementHistory(name, since = Date.now() - 7 * 24 * 60 * 60 * 1000) {
   return historyStmt.all({
     name_key: String(name ?? '').trim().toLowerCase(),
-    limit: Math.max(1, Math.min(500, Number(limit) || 100)),
+    since: Number(since) || 0,
   }).map((row) => ({
     timestamp: new Date(row.capturedAt).toISOString(),
     rank: row.rank,
