@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type PointerEvent } from 'react';
-import { TrendingUp } from 'lucide-react';
+import { RotateCcw, TrendingUp } from 'lucide-react';
 import { fetchPlacementHistory } from '../api/leaderboard';
 import type { PlacementHistoryPoint, Player } from '../types';
 
@@ -12,9 +12,14 @@ const WIDTH = 520;
 const HEIGHT = 160;
 const PAD_X = 42;
 const PAD_Y = 22;
+const MIN_SELECTION_WIDTH = 12;
 
 function linePath(points: Array<{ x: number; y: number }>): string {
   return points.map((point, i) => `${i === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }
 
 export default function PlacementHistoryChart({ player, color }: Props) {
@@ -23,6 +28,8 @@ export default function PlacementHistoryChart({ player, color }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [zoomRange, setZoomRange] = useState<{ start: number; end: number } | null>(null);
+  const [selection, setSelection] = useState<{ startX: number; currentX: number } | null>(null);
   const gradientId = `placement-fill-${player.id.replace(/[^a-z0-9_-]/gi, '-')}`;
 
   useEffect(() => {
@@ -30,6 +37,8 @@ export default function PlacementHistoryChart({ player, color }: Props) {
       setLoading(true);
       setError(null);
       setHoveredIndex(null);
+      setZoomRange(null);
+      setSelection(null);
       fetchPlacementHistory(player.name)
         .then(points => {
           setHistory(points);
@@ -53,7 +62,7 @@ export default function PlacementHistoryChart({ player, color }: Props) {
   );
   const isLoadingHistory = loading || historyPlayerName !== player.name;
 
-  const chart = useMemo(() => {
+  const basePoints = useMemo(() => {
     const latest = loadedHistory[loadedHistory.length - 1];
     const currentPoint: PlacementHistoryPoint = {
       timestamp: new Date().toISOString(),
@@ -65,7 +74,15 @@ export default function PlacementHistoryChart({ player, color }: Props) {
         ? [...loadedHistory, currentPoint]
         : loadedHistory;
 
-    if (points.length <= 1) return null;
+    return points;
+  }, [loadedHistory, player.kills, player.rank]);
+
+  const chart = useMemo(() => {
+    if (basePoints.length <= 1) return null;
+
+    const start = zoomRange ? clamp(zoomRange.start, 0, basePoints.length - 2) : 0;
+    const end = zoomRange ? clamp(zoomRange.end, start + 1, basePoints.length - 1) : basePoints.length - 1;
+    const points = basePoints.slice(start, end + 1);
 
     const bestRank = Math.min(...points.map(point => point.rank));
     const worstRank = Math.max(...points.map(point => point.rank));
@@ -75,7 +92,7 @@ export default function PlacementHistoryChart({ player, color }: Props) {
     const coords = points.map((point, index) => {
       const x = PAD_X + (index / entrySpan) * (WIDTH - PAD_X * 2);
       const y = PAD_Y + ((point.rank - bestRank) / rankSpan) * (HEIGHT - PAD_Y * 2);
-      return { x, y, point, entry: index + 1 };
+      return { x, y, point, entry: start + index + 1 };
     });
 
     return {
@@ -85,16 +102,33 @@ export default function PlacementHistoryChart({ player, color }: Props) {
       last: points[points.length - 1],
       best: bestRank,
       worst: worstRank,
+      start,
+      end,
     };
-  }, [loadedHistory, player.kills, player.rank]);
+  }, [basePoints, zoomRange]);
 
   const hovered = chart && hoveredIndex !== null ? chart.coords[hoveredIndex] : null;
+  const isZoomed = zoomRange !== null;
+  const selectionBox = selection
+    ? {
+        x: Math.min(selection.startX, selection.currentX),
+        width: Math.abs(selection.currentX - selection.startX),
+      }
+    : null;
+
+  function getChartX(event: PointerEvent<SVGSVGElement>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    return clamp(((event.clientX - rect.left) / rect.width) * WIDTH, PAD_X, WIDTH - PAD_X);
+  }
 
   function handlePointerMove(event: PointerEvent<SVGSVGElement>) {
     if (!chart) return;
 
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = ((event.clientX - rect.left) / rect.width) * WIDTH;
+    const x = getChartX(event);
+    if (selection) {
+      setSelection({ ...selection, currentX: x });
+    }
+
     let nearestIndex = 0;
     let nearestDistance = Infinity;
 
@@ -109,6 +143,40 @@ export default function PlacementHistoryChart({ player, color }: Props) {
     setHoveredIndex(nearestIndex);
   }
 
+  function handlePointerDown(event: PointerEvent<SVGSVGElement>) {
+    if (!chart) return;
+
+    const x = getChartX(event);
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setSelection({ startX: x, currentX: x });
+  }
+
+  function handlePointerUp(event: PointerEvent<SVGSVGElement>) {
+    if (!chart || !selection) return;
+
+    const endX = getChartX(event);
+    const left = Math.min(selection.startX, endX);
+    const right = Math.max(selection.startX, endX);
+    setSelection(null);
+
+    if (right - left < MIN_SELECTION_WIDTH) return;
+
+    const xSpan = WIDTH - PAD_X * 2;
+    const selectedStart = chart.start + Math.floor(((left - PAD_X) / xSpan) * (chart.end - chart.start));
+    const selectedEnd = chart.start + Math.ceil(((right - PAD_X) / xSpan) * (chart.end - chart.start));
+    const nextStart = clamp(selectedStart, 0, basePoints.length - 2);
+    const nextEnd = clamp(selectedEnd, nextStart + 1, basePoints.length - 1);
+
+    setHoveredIndex(null);
+    setZoomRange({ start: nextStart, end: nextEnd });
+  }
+
+  function resetZoom() {
+    setZoomRange(null);
+    setSelection(null);
+    setHoveredIndex(null);
+  }
+
   return (
     <div className="bg-elevated rounded-xl p-4 border border-line">
       <div className="flex items-center justify-between gap-3 mb-3">
@@ -116,7 +184,20 @@ export default function PlacementHistoryChart({ player, color }: Props) {
           <TrendingUp className="w-4 h-4" style={{ color }} />
           <p className="text-xl font-pixel text-ink-ghost uppercase tracking-widest">Placement Over Time</p>
         </div>
-        <p className="font-pixel text-xl text-ink">#{player.rank}</p>
+        <div className="flex items-center gap-2">
+          {isZoomed && (
+            <button
+              type="button"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-line bg-surface/80 text-ink-ghost transition hover:border-line-bright hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              onClick={resetZoom}
+              title="Reset view"
+              aria-label="Reset graph view"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </button>
+          )}
+          <p className="font-pixel text-xl text-ink">#{player.rank}</p>
+        </div>
       </div>
 
       {isLoadingHistory ? (
@@ -132,7 +213,10 @@ export default function PlacementHistoryChart({ player, color }: Props) {
               className="w-full h-full touch-none"
               role="img"
               aria-label={`${player.name} placement history`}
+              onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={() => setSelection(null)}
               onPointerLeave={() => setHoveredIndex(null)}
             >
               <defs>
@@ -151,13 +235,6 @@ export default function PlacementHistoryChart({ player, color }: Props) {
                 );
               })}
 
-              <text x={PAD_X} y={HEIGHT - 6} fill="rgba(199,213,227,0.46)" fontSize="10" fontFamily="monospace">
-                Entry 1
-              </text>
-              <text x={WIDTH - PAD_X} y={HEIGHT - 6} textAnchor="end" fill="rgba(199,213,227,0.46)" fontSize="10" fontFamily="monospace">
-                Entry {chart.coords.length}
-              </text>
-
               <path
                 d={`${chart.path} L ${chart.coords[chart.coords.length - 1].x} ${HEIGHT - PAD_Y} L ${chart.coords[0].x} ${HEIGHT - PAD_Y} Z`}
                 fill={`url(#${gradientId})`}
@@ -170,6 +247,21 @@ export default function PlacementHistoryChart({ player, color }: Props) {
                   <circle cx={hovered.x} cy={hovered.y} r="9" fill={color} opacity="0.16" />
                   <circle cx={hovered.x} cy={hovered.y} r="5" fill="#08111a" stroke={color} strokeWidth="2" />
                 </g>
+              )}
+
+              {selectionBox && selectionBox.width >= 1 && (
+                <rect
+                  x={selectionBox.x}
+                  y={PAD_Y}
+                  width={selectionBox.width}
+                  height={HEIGHT - PAD_Y * 2}
+                  fill={color}
+                  opacity="0.18"
+                  stroke={color}
+                  strokeOpacity="0.55"
+                  strokeWidth="1"
+                  pointerEvents="none"
+                />
               )}
             </svg>
 
