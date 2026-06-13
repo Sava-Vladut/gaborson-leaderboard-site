@@ -39,10 +39,10 @@ proxies `/api/*` to the Node API container.
 SQLite data is persisted in the `leaderboard-data` Docker volume at
 `/data/leaderboard.db` inside the API container.
 
-For a deployed domain, set the allowed API origin before starting:
+For local Docker usage, the allowed API origin defaults to:
 
 ```bash
-CORS_ORIGIN=https://grimnetwork.srvp.ro:5173 docker compose -f docker-compose.vps.yml up -d
+CORS_ORIGIN=http://localhost:5173 docker compose up -d
 ```
 
 ## API
@@ -91,10 +91,10 @@ with JSON:
 }
 ```
 
-For a built game, replace `localhost` with your hosted server domain, for example:
+For a local built game running on the same machine, use:
 
 ```text
-https://grimnetwork.srvp.ro:5173/api/leaderboard
+http://localhost:5173/api/leaderboard
 ```
 
 ## Data Storage
@@ -110,5 +110,5 @@ PORT=3001 npm run dev:api
 LEADERBOARD_DB_FILE=/path/to/leaderboard.db npm run dev:api
 LEADERBOARD_DATA_FILE=/path/to/leaderboard.json npm run dev:api   # only used for first-boot import
 LEADERBOARD_MAX_PLAYERS=100 npm run dev:api
-CORS_ORIGIN=https://grimnetwork.srvp.ro:5173 npm run dev:api
+CORS_ORIGIN=http://localhost:5173 npm run dev:api
 ```
