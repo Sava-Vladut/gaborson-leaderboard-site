@@ -73,7 +73,7 @@ export default function App() {
 
             {/* Body */}
             <div className="px-6 py-4">
-              <div className="w-full space-y-5 lg:space-y-6">
+              <div className="max-w-7xl mx-auto space-y-5 lg:space-y-6">
                 {/* Leaderboard table */}
                 <div className="w-full">
                   <LeaderboardTable

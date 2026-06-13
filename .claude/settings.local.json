@@ -17,7 +17,8 @@
       "Bash(curl -s -X POST http://127.0.0.1:3099/api/economy -H \"Content-Type: application/json\" -d '{\"name\":\"Bot_03\",\"money\":-50}')",
       "Bash(curl -s http://127.0.0.1:3099/api/economy)",
       "Bash(npx eslint *)",
-      "Bash(echo \"LINT EXIT: $?\")"
+      "Bash(echo \"LINT EXIT: $?\")",
+      "Bash(npx vite *)"
     ]
   }
 }

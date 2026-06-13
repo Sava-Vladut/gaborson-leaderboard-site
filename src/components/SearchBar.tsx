@@ -8,7 +8,7 @@ interface Props {
 export default function SearchBar({ query, onChange }: Props) {
   return (
     <div className="px-6 py-3">
-      <div className="w-full">
+      <div className="max-w-7xl mx-auto">
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-ghost pointer-events-none" />
           <input

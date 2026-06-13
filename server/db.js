@@ -61,7 +61,14 @@ const LIST_SQL = `
     damageDealt,
     damageReceived,
     money,
-    rank
+    rank,
+    (
+      SELECT h.rank
+      FROM placement_history h
+      WHERE h.name_key = nameKey
+      ORDER BY h.captured_at DESC, h.id DESC
+      LIMIT 1 OFFSET 1
+    ) AS previousRank
   FROM (
     SELECT
       name_key AS nameKey,
@@ -84,14 +91,6 @@ const listStmts = {
   damageReceived: db.prepare(LIST_SQL.replaceAll('__ORDER_BY__', 'damage_received')),
   money: db.prepare(LIST_SQL.replaceAll('__ORDER_BY__', 'money')),
 };
-
-const previousRankStmt = db.prepare(`
-  SELECT rank
-  FROM placement_history
-  WHERE name_key = @name_key
-  ORDER BY captured_at DESC, id DESC
-  LIMIT 1 OFFSET 1
-`);
 
 const listRowsStmt = db.prepare(`
   SELECT
@@ -242,21 +241,15 @@ export function listPlayers({ search = '', limit = 100, sort = 'kills' } = {}) {
     search: q,
     search_like: `%${q}%`,
     limit: Math.max(1, Math.min(1000, Number(limit) || 100)),
-  }).map((player) => {
-    const previous = previousRankStmt.get({
-      name_key: player.nameKey,
-    });
-
-    return {
-      name: player.name,
-      kills: player.kills,
-      damageDealt: player.damageDealt,
-      damageReceived: player.damageReceived,
-      money: player.money,
-      rank: player.rank,
-      rankChange: previous ? previous.rank - player.rank : 0,
-    };
-  });
+  }).map((player) => ({
+    name: player.name,
+    kills: player.kills,
+    damageDealt: player.damageDealt,
+    damageReceived: player.damageReceived,
+    money: player.money,
+    rank: player.rank,
+    rankChange: player.previousRank == null ? 0 : player.previousRank - player.rank,
+  }));
 }
 
 export function countPlayers() {
