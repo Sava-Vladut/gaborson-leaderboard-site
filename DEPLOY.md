@@ -111,7 +111,44 @@ ssh user@your-server "sudo mkdir -p /var/www/leaderboard && sudo chown $USER:$US
 
 ---
 
-## 3. Nginx Configuration
+## 3. VPS Docker Compose HTTPS on Port 5173
+
+The VPS Compose file serves the app directly at:
+
+```text
+https://grimnetwork.srvp.ro:5173
+```
+
+First, make sure DNS for `grimnetwork.srvp.ro` points at the VPS. Then obtain a
+Let's Encrypt certificate on the VPS:
+
+```bash
+sudo apt install -y certbot
+sudo certbot certonly --standalone -d grimnetwork.srvp.ro
+```
+
+Start the VPS stack:
+
+```bash
+docker compose -f docker-compose.vps.yml up -d --build
+```
+
+Useful checks:
+
+```bash
+curl -k https://localhost:5173/health
+curl https://grimnetwork.srvp.ro:5173/api/leaderboard
+```
+
+Unity and other clients should post to:
+
+```text
+https://grimnetwork.srvp.ro:5173/api/leaderboard
+```
+
+Make sure the VPS firewall allows TCP port `5173`.
+
+## 4. Optional Host Nginx Reverse Proxy
 
 Create the site config:
 
@@ -119,7 +156,7 @@ Create the site config:
 sudo nano /etc/nginx/sites-available/leaderboard
 ```
 
-Paste this to send `grimnetwork.srvp.ro` traffic to the Docker web service on port `5173`:
+If you prefer standard HTTPS without `:5173`, paste this to send `grimnetwork.srvp.ro` traffic to the Docker web service on port `5173`:
 
 ```nginx
 server {
@@ -156,7 +193,7 @@ sudo systemctl reload nginx
 
 ---
 
-## 4. HTTPS with Let's Encrypt
+## 5. HTTPS with Let's Encrypt for Host Nginx
 
 ```bash
 sudo apt install -y certbot python3-certbot-nginx
@@ -173,7 +210,7 @@ sudo certbot renew --dry-run
 
 ---
 
-## 5. Environment Variables
+## 6. Environment Variables
 
 The only runtime variable the frontend uses is the API proxy target, which is resolved at **build time** by Vite. Set it before building:
 
@@ -186,7 +223,7 @@ If your backend runs on the same server, the default `http://localhost:3001` pro
 
 ---
 
-## 6. Keeping the Backend Running (PM2)
+## 7. Keeping the Backend Running (PM2)
 
 If your leaderboard API is a Node.js app on the same server:
 
@@ -199,7 +236,7 @@ pm2 startup   # follow the printed command to enable on reboot
 
 ---
 
-## 7. Re-deploying
+## 8. Re-deploying
 
 Every deploy is just a build + file sync — no server restart needed:
 
@@ -223,7 +260,7 @@ npm run deploy
 
 ---
 
-## 8. Optional: GitHub Actions CI/CD
+## 9. Optional: GitHub Actions CI/CD
 
 `.github/workflows/deploy.yml`:
 

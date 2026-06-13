@@ -33,7 +33,7 @@ If Unity is running on a phone, another PC, or a built game, `localhost` means t
 
 ```text
 http://YOUR_COMPUTER_IP:3001/api/leaderboard
-https://grimnetwork.srvp.ro/api/leaderboard
+https://grimnetwork.srvp.ro:5173/api/leaderboard
 ```
 
 For another device on your network to reach your computer, start the API with:
@@ -118,7 +118,7 @@ using UnityEngine.Networking;
 
 public class LeaderboardClient : MonoBehaviour
 {
-    [SerializeField] private string apiUrl = "https://grimnetwork.srvp.ro/api/leaderboard";
+    [SerializeField] private string apiUrl = "https://grimnetwork.srvp.ro:5173/api/leaderboard";
 
     [System.Serializable]
     private class KillsPayload
