@@ -9,6 +9,7 @@ import {
   listBalances,
   listPlacementHistory,
   listPlayers,
+  pruneHistory,
   recordPlacementSnapshot,
   setMoney,
   upsertPlayer,
@@ -247,6 +248,10 @@ const imported = await importJsonIfEmpty(DATA_FILE);
 if (imported > 0) {
   console.log(`Imported ${imported} rows from ${DATA_FILE} into ${DB_FILE}`);
 }
+
+const pruned = pruneHistory(Date.now() - PLACEMENT_HISTORY_WINDOW_MS);
+if (pruned > 0) console.log(`Pruned ${pruned} stale placement_history rows`);
+setInterval(() => pruneHistory(Date.now() - PLACEMENT_HISTORY_WINDOW_MS), 60 * 60 * 1000);
 
 server.listen(PORT, HOST, () => {
   console.log(`Leaderboard API listening on http://${HOST}:${PORT} (db: ${DB_FILE})`);

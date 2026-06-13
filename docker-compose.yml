@@ -8,7 +8,7 @@ services:
       PORT: 3001
       LEADERBOARD_DB_FILE: /data/leaderboard.db
       LEADERBOARD_DATA_FILE: /app/server/leaderboard.json
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://grimnetwork.srvp.ro}
     volumes:
       - leaderboard-data:/data
     ports:

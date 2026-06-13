@@ -274,6 +274,9 @@ export default function PlacementHistoryChart({ player, color }: Props) {
                   boxShadow: `0 0 0 1px ${color}25, 0 12px 26px rgba(0,0,0,0.45)`,
                 }}
               >
+                <p className="text-base text-ink-ghost mb-1">
+                  {new Date(hovered.point.timestamp).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })}
+                </p>
                 <p className="text-xl text-ink">Rank #{hovered.point.rank}</p>
                 {hovered.point.kills !== undefined && (
                   <p className="text-base text-accent">{hovered.point.kills.toLocaleString()} kills</p>

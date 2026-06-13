@@ -119,39 +119,24 @@ Create the site config:
 sudo nano /etc/nginx/sites-available/leaderboard
 ```
 
-Paste this (replace `leaderboard.yourdomain.com` and `localhost:3001` with your values):
+Paste this to send `grimnetwork.srvp.ro` traffic to the Docker web service on port `5173`:
 
 ```nginx
 server {
     listen 80;
     listen [::]:80;
-    server_name leaderboard.yourdomain.com;
+    server_name grimnetwork.srvp.ro;
 
-    root /var/www/leaderboard;
-    index index.html;
-
-    # SPA fallback — React Router support
     location / {
-        try_files $uri $uri/ /index.html;
-    }
-
-    # Proxy API requests to your backend
-    location /api/ {
-        proxy_pass         http://localhost:3001/api/;
+        proxy_pass         http://127.0.0.1:5173;
         proxy_http_version 1.1;
         proxy_set_header   Upgrade $http_upgrade;
         proxy_set_header   Connection 'upgrade';
         proxy_set_header   Host $host;
         proxy_set_header   X-Real-IP $remote_addr;
         proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
         proxy_cache_bypass $http_upgrade;
-    }
-
-    # Aggressive caching for hashed static assets
-    location ~* \.(js|css|woff2?|png|svg|ico|webp)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-        access_log off;
     }
 
     # Security headers
@@ -175,7 +160,7 @@ sudo systemctl reload nginx
 
 ```bash
 sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d leaderboard.yourdomain.com
+sudo certbot --nginx -d grimnetwork.srvp.ro
 ```
 
 Certbot will auto-modify your Nginx config to handle SSL and redirect HTTP → HTTPS.

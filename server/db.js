@@ -135,6 +135,8 @@ const listBalancesStmt = db.prepare(`
 
 const countStmt = db.prepare('SELECT COUNT(*) AS n FROM players');
 
+const pruneHistoryStmt = db.prepare('DELETE FROM placement_history WHERE captured_at < @before');
+
 const insertHistoryStmt = db.prepare(`
   INSERT INTO placement_history (
     name_key,
@@ -398,6 +400,10 @@ export async function importJsonIfEmpty(jsonPath) {
   }
   recordPlacementSnapshot(now);
   return countStmt.get().n;
+}
+
+export function pruneHistory(before = Date.now() - 7 * 24 * 60 * 60 * 1000) {
+  return pruneHistoryStmt.run({ before }).changes;
 }
 
 export { DB_FILE };

@@ -42,7 +42,7 @@ SQLite data is persisted in the `leaderboard-data` Docker volume at
 For a deployed domain, set the allowed API origin before starting:
 
 ```bash
-CORS_ORIGIN=https://yourdomain.com docker compose up -d
+CORS_ORIGIN=https://grimnetwork.srvp.ro docker compose up -d
 ```
 
 ## API
@@ -94,7 +94,7 @@ with JSON:
 For a built game, replace `localhost` with your hosted server domain, for example:
 
 ```text
-https://yourdomain.com/api/leaderboard
+https://grimnetwork.srvp.ro/api/leaderboard
 ```
 
 ## Data Storage
@@ -110,5 +110,5 @@ PORT=3001 npm run dev:api
 LEADERBOARD_DB_FILE=/path/to/leaderboard.db npm run dev:api
 LEADERBOARD_DATA_FILE=/path/to/leaderboard.json npm run dev:api   # only used for first-boot import
 LEADERBOARD_MAX_PLAYERS=100 npm run dev:api
-CORS_ORIGIN=https://yourdomain.com npm run dev:api
+CORS_ORIGIN=https://grimnetwork.srvp.ro npm run dev:api
 ```
