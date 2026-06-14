@@ -215,6 +215,30 @@
 .backdrop-enter { animation: backdropIn  var(--dur-3) var(--ease-out-quart) forwards; }
 .backdrop-exit  { animation: backdropOut var(--dur-2) ease forwards; }
 
+/* ─── Combat-dossier modal ────────────────────────────────── */
+
+/* Targeting brackets snap inward to "lock on" when the dossier opens */
+@keyframes bracketLock {
+  from { opacity: 0; transform: translate(var(--lock-x, 0), var(--lock-y, 0)) scale(1.35); }
+  to   { opacity: 1; transform: translate(0, 0) scale(1); }
+}
+.bracket-lock { animation: bracketLock 0.5s var(--ease-out-quart) forwards; }
+
+/* Stat tiles cascade up as the file decrypts */
+@keyframes dossierTileIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.dossier-tile { opacity: 0; animation: dossierTileIn var(--dur-3) var(--ease-out-quart) forwards; }
+
+/* Magnitude bars wipe out from the leading edge */
+@keyframes dossierBar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.dossier-bar { transform-origin: left; animation: dossierBar 0.9s var(--ease-out-quart) forwards; }
+
+/* Header recon sweep */
+@keyframes dossierScan { 0% { transform: translateX(-130%); } 100% { transform: translateX(130%); } }
+.dossier-scan { animation: dossierScan 4s var(--ease-in-out-cubic) infinite; }
+
 /* Metric value swap — plays when the sort metric changes */
 @keyframes valuePop {
   from { opacity: 0; transform: translateY(6px) scale(0.96); }

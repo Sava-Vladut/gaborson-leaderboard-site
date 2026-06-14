@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import {
   DB_FILE,
   countPlayers,
+  getGlobalStats,
   getPlayerContext,
   importJsonIfEmpty,
   listBalances,
@@ -17,6 +18,32 @@ const DATA_FILE = process.env.LEADERBOARD_DATA_FILE ?? join(__dirname, 'leaderbo
 const PORT = Number(process.env.PORT ?? 3001);
 const HOST = process.env.HOST ?? '127.0.0.1';
 const MAX_BODY_BYTES = 1024 * 16;
+const MAX_LOGS = 250;
+const logs = [];
+let logSeq = 0;
+
+function logEvent(level, source, message, data = undefined) {
+  const entry = {
+    id: ++logSeq,
+    time: new Date().toISOString(),
+    level,
+    source,
+    message,
+    ...(data === undefined ? {} : { data }),
+  };
+  logs.unshift(entry);
+  if (logs.length > MAX_LOGS) logs.length = MAX_LOGS;
+  return entry;
+}
+
+function getLogs() {
+  return {
+    dbFile: DB_FILE,
+    totalPlayers: countPlayers(),
+    maxEntries: MAX_LOGS,
+    entries: logs,
+  };
+}
 
 function sendJson(res, status, data) {
   const body = JSON.stringify(data);
@@ -104,14 +131,29 @@ function normalizeBalance(input) {
 function handleGetLeaderboard(url, res) {
   const search = url.searchParams.get('search') ?? '';
   const sort = url.searchParams.get('sort') ?? 'kills';
+  const players = listPlayers({
+    search,
+    sort,
+    limit: search.trim() ? 1000 : 100,
+  });
+  logEvent('info', 'api', 'Leaderboard fetched', {
+    sort,
+    search: search.trim() || null,
+    returned: players.length,
+  });
   sendJson(res, 200, {
     totalPlayers: countPlayers(),
-    players: listPlayers({
-      search,
-      sort,
-      limit: search.trim() ? 1000 : 100,
-    }),
+    players,
   });
+}
+
+function handleGetStats(res) {
+  logEvent('info', 'api', 'Global stats fetched');
+  sendJson(res, 200, getGlobalStats());
+}
+
+function handleGetLogs(res) {
+  sendJson(res, 200, getLogs());
 }
 
 function handleGetPlayerContext(url, res) {
@@ -127,10 +169,12 @@ function handleGetPlayerContext(url, res) {
 
   const context = getPlayerContext(name);
   if (!context) {
+    logEvent('warn', 'api', 'Player context not found', { name });
     sendError(res, 404, 'player not found');
     return;
   }
 
+  logEvent('info', 'api', 'Player context fetched', { name });
   sendJson(res, 200, context);
 }
 
@@ -139,17 +183,21 @@ async function handlePostLeaderboard(req, res) {
   const { player, error } = normalizePlayer(body);
 
   if (error) {
+    logEvent('warn', 'unity', 'Rejected leaderboard update', { error });
     sendError(res, 400, error);
     return;
   }
 
   upsertPlayer(player);
+  logEvent('info', 'unity', 'Leaderboard update accepted', player);
   sendJson(res, 201, { ok: true, player, leaderboard: listPlayers() });
 }
 
 function handleGetEconomy(res) {
   // Bare array, mirroring GET /api/leaderboard's shape for the Unity client.
-  sendJson(res, 200, listBalances());
+  const balances = listBalances();
+  logEvent('info', 'api', 'Economy fetched', { returned: balances.length });
+  sendJson(res, 200, balances);
 }
 
 async function handlePostEconomy(req, res) {
@@ -157,11 +205,13 @@ async function handlePostEconomy(req, res) {
   const { balance, error } = normalizeBalance(body);
 
   if (error) {
+    logEvent('warn', 'unity', 'Rejected economy update', { error });
     sendError(res, 400, error);
     return;
   }
 
   setMoney(balance);
+  logEvent('info', 'unity', 'Economy update accepted', balance);
   sendJson(res, 201, { ok: true, balance });
 }
 
@@ -181,6 +231,16 @@ const server = createServer(async (req, res) => {
 
     if (url.pathname === '/api/leaderboard' && req.method === 'GET') {
       handleGetLeaderboard(url, res);
+      return;
+    }
+
+    if (url.pathname === '/api/stats' && req.method === 'GET') {
+      handleGetStats(res);
+      return;
+    }
+
+    if (url.pathname === '/api/logs' && req.method === 'GET') {
+      handleGetLogs(res);
       return;
     }
 
@@ -208,19 +268,26 @@ const server = createServer(async (req, res) => {
       return;
     }
 
+    logEvent('warn', 'api', 'Route not found', { method: req.method, path: url.pathname });
     sendError(res, 404, 'Not found');
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Internal server error';
     const status = message.includes('too large') || message.includes('valid JSON') ? 400 : 500;
+    logEvent(status >= 500 ? 'error' : 'warn', 'api', message, {
+      method: req.method,
+      path: url.pathname,
+    });
     sendError(res, status, message);
   }
 });
 
 const imported = await importJsonIfEmpty(DATA_FILE);
 if (imported > 0) {
+  logEvent('info', 'db', 'Imported JSON seed data', { imported, dataFile: DATA_FILE });
   console.log(`Imported ${imported} rows from ${DATA_FILE} into ${DB_FILE}`);
 }
 
 server.listen(PORT, HOST, () => {
+  logEvent('info', 'api', 'Leaderboard API started', { host: HOST, port: PORT, dbFile: DB_FILE });
   console.log(`Leaderboard API listening on http://${HOST}:${PORT} (db: ${DB_FILE})`);
 });

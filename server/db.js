@@ -104,6 +104,104 @@ const listBalancesStmt = db.prepare(`
 
 const countStmt = db.prepare('SELECT COUNT(*) AS n FROM players');
 
+const statsTotalsStmt = db.prepare(`
+  SELECT
+    COUNT(*) AS totalPlayers,
+    COALESCE(SUM(kills), 0) AS kills,
+    COALESCE(SUM(damage_dealt), 0) AS damageDealt,
+    COALESCE(SUM(damage_received), 0) AS damageReceived,
+    COALESCE(SUM(money), 0) AS money
+  FROM players
+`);
+
+const statsTopKillsStmt = db.prepare(`
+  WITH ranked AS (
+    SELECT
+      name,
+      kills,
+      damage_dealt AS damageDealt,
+      damage_received AS damageReceived,
+      money,
+      ROW_NUMBER() OVER (ORDER BY kills DESC, name ASC) AS rank
+    FROM players
+  )
+  SELECT name, kills, damageDealt, damageReceived, money, rank
+  FROM ranked
+  ORDER BY rank ASC
+  LIMIT 5
+`);
+
+const statsTopTenStmt = db.prepare(`
+  WITH ranked AS (
+    SELECT
+      kills,
+      money,
+      ROW_NUMBER() OVER (ORDER BY kills DESC, name ASC) AS killRank,
+      ROW_NUMBER() OVER (ORDER BY money DESC, name ASC) AS moneyRank
+    FROM players
+  )
+  SELECT
+    COALESCE(SUM(CASE WHEN killRank <= 10 THEN kills ELSE 0 END), 0) AS topTenKills,
+    COALESCE(SUM(CASE WHEN moneyRank <= 10 THEN money ELSE 0 END), 0) AS topTenMoney
+  FROM ranked
+`);
+
+const statsDamageLeaderStmt = db.prepare(`
+  WITH ranked AS (
+    SELECT
+      name,
+      kills,
+      damage_dealt AS damageDealt,
+      damage_received AS damageReceived,
+      money,
+      ROW_NUMBER() OVER (ORDER BY kills DESC, name ASC) AS rank
+    FROM players
+  )
+  SELECT name, kills, damageDealt, damageReceived, money, rank
+  FROM ranked
+  ORDER BY damageDealt DESC, name ASC
+  LIMIT 1
+`);
+
+const statsMoneyLeaderStmt = db.prepare(`
+  WITH ranked AS (
+    SELECT
+      name,
+      kills,
+      damage_dealt AS damageDealt,
+      damage_received AS damageReceived,
+      money,
+      ROW_NUMBER() OVER (ORDER BY kills DESC, name ASC) AS rank
+    FROM players
+  )
+  SELECT name, kills, damageDealt, damageReceived, money, rank
+  FROM ranked
+  ORDER BY money DESC, name ASC
+  LIMIT 1
+`);
+
+const statsEfficiencyLeaderStmt = db.prepare(`
+  WITH ranked AS (
+    SELECT
+      name,
+      kills,
+      damage_dealt AS damageDealt,
+      damage_received AS damageReceived,
+      money,
+      ROW_NUMBER() OVER (ORDER BY kills DESC, name ASC) AS rank
+    FROM players
+  )
+  SELECT name, kills, damageDealt, damageReceived, money, rank
+  FROM ranked
+  ORDER BY
+    CASE
+      WHEN damageReceived > 0 THEN CAST(damageDealt AS REAL) / damageReceived
+      ELSE damageDealt
+    END DESC,
+    name ASC
+  LIMIT 1
+`);
+
 const playerContextStmt = db.prepare(`
   WITH ranked AS (
     SELECT
@@ -177,6 +275,39 @@ export function listPlayers({ search = '', limit = 100, sort = 'kills' } = {}) {
 
 export function countPlayers() {
   return countStmt.get().n;
+}
+
+export function getGlobalStats() {
+  const totals = statsTotalsStmt.get();
+  const topTen = statsTopTenStmt.get();
+  const totalPlayers = Number(totals.totalPlayers ?? 0);
+  const totalKills = Number(totals.kills ?? 0);
+  const totalDamageDealt = Number(totals.damageDealt ?? 0);
+  const totalDamageReceived = Number(totals.damageReceived ?? 0);
+  const totalMoney = Number(totals.money ?? 0);
+
+  return {
+    totalPlayers,
+    totals: {
+      kills: totalKills,
+      damageDealt: totalDamageDealt,
+      damageReceived: totalDamageReceived,
+      money: totalMoney,
+    },
+    averages: {
+      kills: totalPlayers > 0 ? totalKills / totalPlayers : 0,
+      damageDealt: totalPlayers > 0 ? totalDamageDealt / totalPlayers : 0,
+      damageReceived: totalPlayers > 0 ? totalDamageReceived / totalPlayers : 0,
+      money: totalPlayers > 0 ? totalMoney / totalPlayers : 0,
+    },
+    damageRatio: totalDamageReceived > 0 ? totalDamageDealt / totalDamageReceived : 0,
+    topTenKillShare: totalKills > 0 ? (Number(topTen.topTenKills ?? 0) / totalKills) * 100 : 0,
+    topTenMoneyShare: totalMoney > 0 ? (Number(topTen.topTenMoney ?? 0) / totalMoney) * 100 : 0,
+    killLeaders: statsTopKillsStmt.all(),
+    damageLeader: statsDamageLeaderStmt.get() ?? null,
+    moneyLeader: statsMoneyLeaderStmt.get() ?? null,
+    efficiencyLeader: statsEfficiencyLeaderStmt.get() ?? null,
+  };
 }
 
 export function getPlayerContext(name) {
