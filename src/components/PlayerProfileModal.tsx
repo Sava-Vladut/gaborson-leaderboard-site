@@ -3,7 +3,6 @@ import { X, Crown, Medal, ChevronUp, ChevronDown, Shield } from 'lucide-react';
 import { fetchPlayerContext } from '../api/leaderboard';
 import { formatMoney } from '../api/economy';
 import type { Player, PlayerContext } from '../types';
-import PlacementHistoryChart from './PlacementHistoryChart';
 
 /* ─── helpers ─────────────────────────────────────────────── */
 
@@ -206,8 +205,6 @@ export default function PlayerProfileModal({ player, players, totalPlayers: fall
                 </div>
               ))}
             </div>
-
-            <PlacementHistoryChart player={player} color={color} />
 
             {/* Rank position */}
             <div className="bg-elevated rounded-xl p-4 border border-line">

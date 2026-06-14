@@ -7,10 +7,7 @@ import {
   getPlayerContext,
   importJsonIfEmpty,
   listBalances,
-  listPlacementHistory,
   listPlayers,
-  pruneHistory,
-  recordPlacementSnapshot,
   setMoney,
   upsertPlayer,
 } from './db.js';
@@ -20,7 +17,6 @@ const DATA_FILE = process.env.LEADERBOARD_DATA_FILE ?? join(__dirname, 'leaderbo
 const PORT = Number(process.env.PORT ?? 3001);
 const HOST = process.env.HOST ?? '127.0.0.1';
 const MAX_BODY_BYTES = 1024 * 16;
-const PLACEMENT_HISTORY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 function sendJson(res, status, data) {
   const body = JSON.stringify(data);
@@ -138,20 +134,6 @@ function handleGetPlayerContext(url, res) {
   sendJson(res, 200, context);
 }
 
-function handleGetPlacementHistory(url, res) {
-  const prefix = '/api/players/';
-  const suffix = '/history';
-  const encodedName = url.pathname.slice(prefix.length, -suffix.length);
-  const name = decodeURIComponent(encodedName).trim();
-
-  if (!name) {
-    sendError(res, 400, 'player name is required');
-    return;
-  }
-
-  sendJson(res, 200, listPlacementHistory(name, Date.now() - PLACEMENT_HISTORY_WINDOW_MS));
-}
-
 async function handlePostLeaderboard(req, res) {
   const body = await readJsonBody(req);
   const { player, error } = normalizePlayer(body);
@@ -162,7 +144,6 @@ async function handlePostLeaderboard(req, res) {
   }
 
   upsertPlayer(player);
-  recordPlacementSnapshot();
   sendJson(res, 201, { ok: true, player, leaderboard: listPlayers() });
 }
 
@@ -212,15 +193,6 @@ const server = createServer(async (req, res) => {
       return;
     }
 
-    if (
-      url.pathname.startsWith('/api/players/') &&
-      url.pathname.endsWith('/history') &&
-      req.method === 'GET'
-    ) {
-      handleGetPlacementHistory(url, res);
-      return;
-    }
-
     if (url.pathname === '/api/leaderboard' && req.method === 'POST') {
       await handlePostLeaderboard(req, res);
       return;
@@ -248,10 +220,6 @@ const imported = await importJsonIfEmpty(DATA_FILE);
 if (imported > 0) {
   console.log(`Imported ${imported} rows from ${DATA_FILE} into ${DB_FILE}`);
 }
-
-const pruned = pruneHistory(Date.now() - PLACEMENT_HISTORY_WINDOW_MS);
-if (pruned > 0) console.log(`Pruned ${pruned} stale placement_history rows`);
-setInterval(() => pruneHistory(Date.now() - PLACEMENT_HISTORY_WINDOW_MS), 60 * 60 * 1000);
 
 server.listen(PORT, HOST, () => {
   console.log(`Leaderboard API listening on http://${HOST}:${PORT} (db: ${DB_FILE})`);

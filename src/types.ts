@@ -5,7 +5,6 @@ export interface Player {
   damageReceived: number;
   money: number;
   rank: number;
-  rankChange?: number;
   id: string;
 }
 
@@ -16,7 +15,6 @@ export interface ApiPlayer {
   damageReceived: number;
   money?: number;
   rank?: number;
-  rankChange?: number;
 }
 
 export interface LeaderboardResponse {
@@ -33,9 +31,3 @@ export interface PlayerContext {
 }
 
 export type SortMetric = 'kills' | 'damageDealt' | 'damageReceived' | 'money';
-
-export interface PlacementHistoryPoint {
-  timestamp: string;
-  rank: number;
-  kills?: number;
-}
