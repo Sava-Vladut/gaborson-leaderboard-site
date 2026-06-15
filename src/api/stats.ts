@@ -9,6 +9,7 @@ function normalizePlayer(player: ApiPlayer, fallbackRank: number): Player {
     damageDealt: Number(player.damageDealt ?? 0),
     damageReceived: Number(player.damageReceived ?? 0),
     money: Number(player.money ?? 0),
+    lastSeenChannel: String(player.lastSeenChannel ?? '').trim(),
     rank,
     id: `${rank}-${name.toLowerCase()}`,
   };

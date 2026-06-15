@@ -22,9 +22,19 @@ db.exec(`
     damage_dealt    INTEGER NOT NULL DEFAULT 0 CHECK (damage_dealt >= 0),
     damage_received INTEGER NOT NULL DEFAULT 0 CHECK (damage_received >= 0),
     money           INTEGER NOT NULL DEFAULT 0 CHECK (money >= 0),
+    last_seen_channel TEXT NOT NULL DEFAULT '',
     updated_at      INTEGER NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_players_kills ON players (kills DESC, name ASC);
+
+  CREATE TABLE IF NOT EXISTS shop_prices (
+    item_key      TEXT PRIMARY KEY,
+    display_name  TEXT NOT NULL,
+    category      TEXT NOT NULL,
+    default_price INTEGER NOT NULL DEFAULT 0 CHECK (default_price >= 0),
+    price         INTEGER NOT NULL DEFAULT 0 CHECK (price >= 0),
+    updated_at    INTEGER NOT NULL
+  );
 `);
 
 db.exec('DROP TABLE IF EXISTS placement_history');
@@ -40,6 +50,9 @@ if (!existingCols.includes('damage_received')) {
 if (!existingCols.includes('money')) {
   db.exec('ALTER TABLE players ADD COLUMN money INTEGER NOT NULL DEFAULT 0 CHECK (money >= 0)');
 }
+if (!existingCols.includes('last_seen_channel')) {
+  db.exec("ALTER TABLE players ADD COLUMN last_seen_channel TEXT NOT NULL DEFAULT ''");
+}
 
 const LIST_SQL = `
   SELECT
@@ -49,6 +62,7 @@ const LIST_SQL = `
     damageDealt,
     damageReceived,
     money,
+    lastSeenChannel,
     rank
   FROM (
     SELECT
@@ -58,6 +72,7 @@ const LIST_SQL = `
       damage_dealt AS damageDealt,
       damage_received AS damageReceived,
       money,
+      last_seen_channel AS lastSeenChannel,
       ROW_NUMBER() OVER (ORDER BY __ORDER_BY__ DESC, name ASC) AS rank
     FROM players
   )
@@ -74,13 +89,17 @@ const listStmts = {
 };
 
 const upsertStmt = db.prepare(`
-  INSERT INTO players (name_key, name, kills, damage_dealt, damage_received, updated_at)
-  VALUES (@name_key, @name, @kills, @damage_dealt, @damage_received, @updated_at)
+  INSERT INTO players (name_key, name, kills, damage_dealt, damage_received, last_seen_channel, updated_at)
+  VALUES (@name_key, @name, @kills, @damage_dealt, @damage_received, @last_seen_channel, @updated_at)
   ON CONFLICT(name_key) DO UPDATE SET
     name            = excluded.name,
     kills           = MAX(excluded.kills, players.kills),
     damage_dealt    = players.damage_dealt + excluded.damage_dealt,
     damage_received = players.damage_received + excluded.damage_received,
+    last_seen_channel = CASE
+      WHEN excluded.last_seen_channel <> '' THEN excluded.last_seen_channel
+      ELSE players.last_seen_channel
+    END,
     updated_at      = excluded.updated_at
 `);
 
@@ -100,6 +119,59 @@ const listBalancesStmt = db.prepare(`
   SELECT name, money
   FROM players
   ORDER BY money DESC, name ASC
+`);
+
+const seedShopItemStmt = db.prepare(`
+  INSERT INTO shop_prices (item_key, display_name, category, default_price, price, updated_at)
+  VALUES (@item_key, @display_name, @category, @default_price, @price, @updated_at)
+  ON CONFLICT(item_key) DO NOTHING
+`);
+
+const upsertShopCatalogItemStmt = db.prepare(`
+  INSERT INTO shop_prices (item_key, display_name, category, default_price, price, updated_at)
+  VALUES (@item_key, @display_name, @category, @default_price, @default_price, @updated_at)
+  ON CONFLICT(item_key) DO UPDATE SET
+    display_name  = excluded.display_name,
+    category      = excluded.category,
+    default_price = excluded.default_price,
+    updated_at    = excluded.updated_at
+`);
+
+const updateShopPriceStmt = db.prepare(`
+  UPDATE shop_prices
+  SET price = @price, updated_at = @updated_at
+  WHERE item_key = @item_key
+`);
+
+const listShopPricesStmt = db.prepare(`
+  SELECT
+    item_key AS key,
+    display_name AS displayName,
+    category,
+    default_price AS defaultPrice,
+    price,
+    updated_at AS updatedAt
+  FROM shop_prices
+  ORDER BY
+    CASE category
+      WHEN 'Armor' THEN 0
+      WHEN 'Weapon' THEN 1
+      WHEN 'Utility' THEN 2
+      ELSE 3
+    END,
+    display_name ASC
+`);
+
+const getShopPriceStmt = db.prepare(`
+  SELECT
+    item_key AS key,
+    display_name AS displayName,
+    category,
+    default_price AS defaultPrice,
+    price,
+    updated_at AS updatedAt
+  FROM shop_prices
+  WHERE item_key = @item_key
 `);
 
 const countStmt = db.prepare('SELECT COUNT(*) AS n FROM players');
@@ -122,10 +194,11 @@ const statsTopKillsStmt = db.prepare(`
       damage_dealt AS damageDealt,
       damage_received AS damageReceived,
       money,
+      last_seen_channel AS lastSeenChannel,
       ROW_NUMBER() OVER (ORDER BY kills DESC, name ASC) AS rank
     FROM players
   )
-  SELECT name, kills, damageDealt, damageReceived, money, rank
+  SELECT name, kills, damageDealt, damageReceived, money, lastSeenChannel, rank
   FROM ranked
   ORDER BY rank ASC
   LIMIT 5
@@ -154,10 +227,11 @@ const statsDamageLeaderStmt = db.prepare(`
       damage_dealt AS damageDealt,
       damage_received AS damageReceived,
       money,
+      last_seen_channel AS lastSeenChannel,
       ROW_NUMBER() OVER (ORDER BY kills DESC, name ASC) AS rank
     FROM players
   )
-  SELECT name, kills, damageDealt, damageReceived, money, rank
+  SELECT name, kills, damageDealt, damageReceived, money, lastSeenChannel, rank
   FROM ranked
   ORDER BY damageDealt DESC, name ASC
   LIMIT 1
@@ -171,10 +245,11 @@ const statsMoneyLeaderStmt = db.prepare(`
       damage_dealt AS damageDealt,
       damage_received AS damageReceived,
       money,
+      last_seen_channel AS lastSeenChannel,
       ROW_NUMBER() OVER (ORDER BY kills DESC, name ASC) AS rank
     FROM players
   )
-  SELECT name, kills, damageDealt, damageReceived, money, rank
+  SELECT name, kills, damageDealt, damageReceived, money, lastSeenChannel, rank
   FROM ranked
   ORDER BY money DESC, name ASC
   LIMIT 1
@@ -188,10 +263,11 @@ const statsEfficiencyLeaderStmt = db.prepare(`
       damage_dealt AS damageDealt,
       damage_received AS damageReceived,
       money,
+      last_seen_channel AS lastSeenChannel,
       ROW_NUMBER() OVER (ORDER BY kills DESC, name ASC) AS rank
     FROM players
   )
-  SELECT name, kills, damageDealt, damageReceived, money, rank
+  SELECT name, kills, damageDealt, damageReceived, money, lastSeenChannel, rank
   FROM ranked
   ORDER BY
     CASE
@@ -209,6 +285,8 @@ const playerContextStmt = db.prepare(`
       kills,
       damage_dealt AS damageDealt,
       damage_received AS damageReceived,
+      money,
+      last_seen_channel AS lastSeenChannel,
       ROW_NUMBER() OVER (ORDER BY kills DESC, name ASC) AS rank,
       COUNT(*) OVER () AS totalPlayers,
       FIRST_VALUE(kills) OVER (ORDER BY kills DESC, name ASC) AS leaderKills
@@ -225,6 +303,8 @@ const playerContextStmt = db.prepare(`
     ranked.kills,
     ranked.damageDealt,
     ranked.damageReceived,
+    ranked.money,
+    ranked.lastSeenChannel,
     ranked.rank,
     target.totalPlayers,
     target.leaderKills
@@ -237,6 +317,8 @@ const playerContextStmt = db.prepare(`
     ranked.kills,
     ranked.damageDealt,
     ranked.damageReceived,
+    ranked.money,
+    ranked.lastSeenChannel,
     ranked.rank,
     target.totalPlayers,
     target.leaderKills
@@ -249,6 +331,8 @@ const playerContextStmt = db.prepare(`
     ranked.kills,
     ranked.damageDealt,
     ranked.damageReceived,
+    ranked.money,
+    ranked.lastSeenChannel,
     ranked.rank,
     target.totalPlayers,
     target.leaderKills
@@ -269,6 +353,7 @@ export function listPlayers({ search = '', limit = 100, sort = 'kills' } = {}) {
     damageDealt: player.damageDealt,
     damageReceived: player.damageReceived,
     money: player.money,
+    lastSeenChannel: player.lastSeenChannel,
     rank: player.rank,
   }));
 }
@@ -322,6 +407,8 @@ export function getPlayerContext(name) {
     kills: row.kills,
     damageDealt: row.damageDealt,
     damageReceived: row.damageReceived,
+    money: row.money,
+    lastSeenChannel: row.lastSeenChannel,
     rank: row.rank,
   }) : null;
 
@@ -334,13 +421,14 @@ export function getPlayerContext(name) {
   };
 }
 
-export function upsertPlayer({ name, kills, damageDealt = 0, damageReceived = 0 }) {
+export function upsertPlayer({ name, kills, damageDealt = 0, damageReceived = 0, lastSeenChannel = '' }) {
   upsertStmt.run({
     name_key: name.toLowerCase(),
     name,
     kills,
     damage_dealt: damageDealt,
     damage_received: damageReceived,
+    last_seen_channel: lastSeenChannel,
     updated_at: Date.now(),
   });
 }
@@ -359,6 +447,68 @@ export function listBalances() {
     name: row.name,
     money: row.money,
   }));
+}
+
+export function listShopPrices() {
+  return listShopPricesStmt.all();
+}
+
+export function setShopPrice({ key, price }) {
+  updateShopPriceStmt.run({
+    item_key: key,
+    price,
+    updated_at: Date.now(),
+  });
+  return getShopPriceStmt.get({ item_key: key }) ?? null;
+}
+
+export function upsertShopCatalog(items) {
+  if (!Array.isArray(items) || items.length === 0) return 0;
+
+  const now = Date.now();
+  let changed = 0;
+  db.exec('BEGIN');
+  try {
+    for (const item of items) {
+      upsertShopCatalogItemStmt.run({
+        item_key: item.key,
+        display_name: item.displayName,
+        category: item.category,
+        default_price: item.defaultPrice,
+        updated_at: now,
+      });
+      changed++;
+    }
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
+  return changed;
+}
+
+export function seedDefaultShopPrices() {
+  const defaults = [
+    { key: 'armor:light', displayName: 'Light Armor', category: 'Armor', defaultPrice: 250 },
+    { key: 'armor:medium', displayName: 'Medium Armor', category: 'Armor', defaultPrice: 950 },
+    { key: 'armor:heavy', displayName: 'Heavy Armor', category: 'Armor', defaultPrice: 1250 },
+    { key: 'weapon:thompson', displayName: 'Thompson', category: 'Weapon', defaultPrice: 1000 },
+    { key: 'utility:phys gun', displayName: 'Gravity Gun', category: 'Utility', defaultPrice: 100 },
+    { key: 'utility:grapple hook', displayName: 'Grapple Hook', category: 'Utility', defaultPrice: 300 },
+    { key: 'weapon:ak47', displayName: 'AK47', category: 'Weapon', defaultPrice: 450 },
+  ];
+
+  const now = Date.now();
+  for (const item of defaults) {
+    seedShopItemStmt.run({
+      item_key: item.key,
+      display_name: item.displayName,
+      category: item.category,
+      default_price: item.defaultPrice,
+      price: item.defaultPrice,
+      updated_at: now,
+    });
+  }
 }
 
 export async function importJsonIfEmpty(jsonPath) {
@@ -389,6 +539,7 @@ export async function importJsonIfEmpty(jsonPath) {
         kills,
         damage_dealt: Number.isInteger(damageDealt) && damageDealt >= 0 ? damageDealt : 0,
         damage_received: Number.isInteger(damageReceived) && damageReceived >= 0 ? damageReceived : 0,
+        last_seen_channel: '',
         updated_at: now,
       });
     }

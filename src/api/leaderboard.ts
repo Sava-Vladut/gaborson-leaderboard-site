@@ -8,6 +8,7 @@ function normalize(data: ApiPlayer[]): Player[] {
       damageDealt: Number(p.damageDealt ?? 0),
       damageReceived: Number(p.damageReceived ?? 0),
       money: Number(p.money ?? 0),
+      lastSeenChannel: String(p.lastSeenChannel ?? '').trim(),
       rank: Number(p.rank ?? i + 1),
       id: `${Number(p.rank ?? i + 1)}-${String(p.name ?? '').trim().toLowerCase()}`,
     }))

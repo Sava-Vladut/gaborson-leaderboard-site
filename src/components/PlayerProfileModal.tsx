@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   X, Crown, Medal, ChevronUp, ChevronDown,
-  Crosshair, Skull, Swords, HeartCrack, Coins, Hash, Target,
+  Crosshair, Skull, Swords, HeartCrack, Coins, Hash, Target, Radio,
 } from 'lucide-react';
 import { fetchPlayerContext } from '../api/leaderboard';
 import { formatMoney } from '../api/economy';
@@ -146,6 +146,7 @@ export default function PlayerProfileModal({
     { label: 'Balance',      Icon: Coins,      value: formatMoney(player.money),    cls: 'text-success', bar: (player.money / max.money) * 100,             barC: '#00ff80' },
     { label: 'Global Rank',  Icon: Hash,       value: `#${player.rank}`,            cls: 'text-accent',  bar: outranked,                                    barC: '#00e0ff' },
     { label: 'Kills Rating', Icon: Target,     value: `${killsRating}%`,            cls: 'text-ink-dim', bar: killsRating,                                  barC: '#7a9bb8' },
+    { label: 'Last Seen',    Icon: Radio,      value: player.lastSeenChannel ? `#${player.lastSeenChannel}` : '-', cls: 'text-accent', bar: player.lastSeenChannel ? 100 : 3, barC: '#00e0ff' },
   ];
 
   /* Percentile arc — a 270° gauge that draws to the share of field outranked. */

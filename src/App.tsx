@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BarChart3, Terminal, Trophy } from 'lucide-react';
+import { BarChart3, Settings, Terminal, Trophy } from 'lucide-react';
 import { useLeaderboard } from './hooks/useLeaderboard';
 import Header from './components/Header';
 import TopThree from './components/TopThree';
@@ -12,8 +12,9 @@ import ErrorState from './components/ErrorState';
 import StatusBar from './components/StatusBar';
 import GlobalStats from './components/GlobalStats';
 import DebugLogs from './components/DebugLogs';
+import ShopAdmin from './components/ShopAdmin';
 
-type MainTab = 'leaderboard' | 'stats' | 'logs';
+type MainTab = 'leaderboard' | 'stats' | 'logs' | 'admin';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<MainTab>('leaderboard');
@@ -116,6 +117,19 @@ export default function App() {
                     <Terminal className="h-4 w-4" />
                     Logs
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => selectTab('admin')}
+                    aria-pressed={activeTab === 'admin'}
+                    className={`flex min-h-11 flex-1 sm:flex-none items-center justify-center gap-2 rounded-md px-4 font-pixel text-sm uppercase tracking-widest transition-all duration-200
+                      ${activeTab === 'admin'
+                        ? 'bg-danger/10 text-danger border border-danger/30 shadow-[0_0_20px_rgba(255,48,80,0.12)]'
+                        : 'border border-transparent text-ink-ghost hover:text-ink-dim hover:bg-elevated/70'
+                      }`}
+                  >
+                    <Settings className="h-4 w-4" />
+                    Admin
+                  </button>
                 </div>
               </div>
             </div>
@@ -156,8 +170,10 @@ export default function App() {
               </>
             ) : activeTab === 'stats' ? (
               <GlobalStats onPlayerClick={setSelectedPlayer} />
-            ) : (
+            ) : activeTab === 'logs' ? (
               <DebugLogs />
+            ) : (
+              <ShopAdmin />
             )}
           </>
         )}

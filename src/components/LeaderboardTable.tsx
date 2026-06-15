@@ -48,6 +48,7 @@ export default function LeaderboardTable({
         font-pixel text-sm uppercase tracking-[0.18em]">
         <span className="w-12 text-center text-ink-ghost/70">#</span>
         <span className="flex-1 text-ink-ghost/70">Player</span>
+        <span className="w-28 text-left text-ink-ghost/70">Channel</span>
         <div className="flex items-center gap-4 lg:gap-6">
           {SORT_OPTIONS.map(option => {
             const active = option.metric === sortMetric;

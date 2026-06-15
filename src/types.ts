@@ -4,6 +4,7 @@ export interface Player {
   damageDealt: number;
   damageReceived: number;
   money: number;
+  lastSeenChannel: string;
   rank: number;
   id: string;
 }
@@ -14,6 +15,7 @@ export interface ApiPlayer {
   damageDealt: number;
   damageReceived: number;
   money?: number;
+  lastSeenChannel?: string;
   rank?: number;
 }
 
@@ -72,3 +74,18 @@ export interface PlayerContext {
 }
 
 export type SortMetric = 'kills' | 'damageDealt' | 'damageReceived' | 'money';
+
+export type ShopCategory = 'Armor' | 'Weapon' | 'Utility';
+
+export interface ShopPriceItem {
+  key: string;
+  displayName: string;
+  category: ShopCategory;
+  defaultPrice: number;
+  price: number;
+  updatedAt: number;
+}
+
+export interface ShopPricesResponse {
+  items: ShopPriceItem[];
+}

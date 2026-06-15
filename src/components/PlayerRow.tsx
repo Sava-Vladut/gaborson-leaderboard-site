@@ -27,6 +27,7 @@ export default function PlayerRow({ player, position, maxMetricValue, sortMetric
   const rs    = RANK_STYLE[position];
   const metricValue = player[sortMetric];
   const fill  = Math.max(2, (metricValue / maxMetricValue) * 100);
+  const channelLabel = player.lastSeenChannel ? `#${player.lastSeenChannel}` : '-';
 
   return (
     <div
@@ -70,10 +71,18 @@ export default function PlayerRow({ player, position, maxMetricValue, sortMetric
             style={{ '--bar-width': `${fill}%`, backgroundColor: barColor(player.rank) } as React.CSSProperties}
           />
         </div>
+        <p className="mt-1 md:hidden font-pixel text-sm uppercase tracking-widest text-ink-ghost">
+          {channelLabel}
+        </p>
       </div>
 
       {/* Desktop: full metric grid — kills · dealt · taken · balance.
          The active sort column is highlighted; a hairline sets balance apart. */}
+      <span className={`hidden md:block w-28 flex-shrink-0 truncate font-pixel text-sm uppercase tracking-widest transition-colors duration-200
+        ${player.lastSeenChannel ? 'text-accent/75 group-hover:text-accent' : 'text-ink-ghost/60'}`}>
+        {channelLabel}
+      </span>
+
       <div className="hidden md:flex items-center gap-4 lg:gap-6 flex-shrink-0">
         {METRIC_ORDER.map(key => {
           const active = sortMetric === key;
