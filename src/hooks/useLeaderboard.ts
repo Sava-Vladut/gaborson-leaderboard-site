@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { fetchLeaderboard } from '../api/leaderboard';
+import { fetchChannels, fetchLeaderboard } from '../api/leaderboard';
 import type { Player, SortMetric } from '../types';
 
 export interface LeaderboardState {
@@ -10,6 +10,9 @@ export interface LeaderboardState {
   maxMetricValue: number;
   sortMetric: SortMetric;
   setSortMetric: (m: SortMetric) => void;
+  channels: string[];
+  channelFilter: string;
+  setChannelFilter: (c: string) => void;
   loading: boolean;
   error: string | null;
   lastUpdated: Date | null;
@@ -28,14 +31,17 @@ export function useLeaderboard(): LeaderboardState {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMetric, setSortMetric] = useState<SortMetric>('kills');
+  const [channels, setChannels] = useState<string[]>([]);
+  const [channelFilter, setChannelFilter] = useState('all');
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const trimmedSearchQuery = searchQuery.trim();
+  const activeChannel = channelFilter === 'all' ? '' : channelFilter;
 
   const load = useCallback(async (isRefresh = false, search = trimmedSearchQuery) => {
     if (!isRefresh) setLoading(true);
     setError(null);
     try {
-      const data = await fetchLeaderboard(search, sortMetric);
+      const data = await fetchLeaderboard(search, sortMetric, activeChannel);
       setPlayers(data.players);
       setTotalPlayers(data.totalPlayers);
       setLastUpdated(new Date());
@@ -45,13 +51,25 @@ export function useLeaderboard(): LeaderboardState {
     } finally {
       setLoading(false);
     }
-  }, [sortMetric, trimmedSearchQuery]);
+  }, [sortMetric, trimmedSearchQuery, activeChannel]);
 
   // Initial fetch
   useEffect(() => {
     const timer = window.setTimeout(() => { load(false); }, 0);
     return () => window.clearTimeout(timer);
   }, [load]);
+
+  // Full channel list for the dropdown — independent of the 100-row leaderboard cap.
+  useEffect(() => {
+    let cancelled = false;
+    fetchChannels()
+      .then(list => {
+        if (cancelled) return;
+        setChannels([...list].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })));
+      })
+      .catch(() => { /* dropdown falls back to "All channels" only */ });
+    return () => { cancelled = true; };
+  }, []);
 
   const filteredPlayers = useMemo(() => {
     return [...players].sort((a, b) => {
@@ -74,6 +92,9 @@ export function useLeaderboard(): LeaderboardState {
     maxMetricValue,
     sortMetric,
     setSortMetric,
+    channels,
+    channelFilter,
+    setChannelFilter,
     loading,
     error,
     lastUpdated,

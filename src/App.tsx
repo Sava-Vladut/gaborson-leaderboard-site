@@ -5,6 +5,7 @@ import Header from './components/Header';
 import TopThree from './components/TopThree';
 import LeaderboardTable from './components/LeaderboardTable';
 import SearchBar from './components/SearchBar';
+import ChannelFilter from './components/ChannelFilter';
 import PlayerRankDisplay from './components/PlayerRankDisplay';
 import PlayerProfileModal from './components/PlayerProfileModal';
 import LoadingState from './components/LoadingState';
@@ -25,6 +26,9 @@ export default function App() {
     maxMetricValue,
     sortMetric,
     setSortMetric,
+    channels,
+    channelFilter,
+    setChannelFilter,
     loading,
     error,
     lastUpdated,
@@ -127,11 +131,23 @@ export default function App() {
                   <TopThree players={topThree} sortMetric={sortMetric} onPlayerClick={setSelectedPlayer} />
                 )}
 
-                {/* Search */}
-                <SearchBar
-                  query={searchQuery}
-                  onChange={setSearchQuery}
-                />
+                {/* Search + channel filter */}
+                <div className="px-6 py-3">
+                  <div className="max-w-7xl mx-auto flex flex-col gap-3 sm:flex-row sm:items-stretch">
+                    <div className="flex-1">
+                      <SearchBar
+                        query={searchQuery}
+                        onChange={setSearchQuery}
+                        bare
+                      />
+                    </div>
+                    <ChannelFilter
+                      channels={channels}
+                      value={channelFilter}
+                      onChange={setChannelFilter}
+                    />
+                  </div>
+                </div>
 
                 {/* Body */}
                 <div className="px-6 py-4">

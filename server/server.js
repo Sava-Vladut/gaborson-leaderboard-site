@@ -8,6 +8,7 @@ import {
   getPlayerContext,
   importJsonIfEmpty,
   listBalances,
+  listChannels,
   listPlayers,
   setMoney,
   upsertPlayer,
@@ -142,14 +143,17 @@ function normalizeBalance(input) {
 function handleGetLeaderboard(url, res) {
   const search = url.searchParams.get('search') ?? '';
   const sort = url.searchParams.get('sort') ?? 'kills';
+  const channel = url.searchParams.get('channel') ?? '';
   const players = listPlayers({
     search,
     sort,
-    limit: search.trim() ? 1000 : 100,
+    channel,
+    limit: search.trim() || channel.trim() ? 1000 : 100,
   });
   logEvent('info', 'api', 'Leaderboard fetched', {
     sort,
     search: search.trim() || null,
+    channel: channel.trim() || null,
     returned: players.length,
   });
   sendJson(res, 200, {
@@ -161,6 +165,12 @@ function handleGetLeaderboard(url, res) {
 function handleGetStats(res) {
   logEvent('info', 'api', 'Global stats fetched');
   sendJson(res, 200, getGlobalStats());
+}
+
+function handleGetChannels(res) {
+  const channels = listChannels();
+  logEvent('info', 'api', 'Channels fetched', { returned: channels.length });
+  sendJson(res, 200, { channels });
 }
 
 function handleGetLogs(res) {
@@ -250,6 +260,11 @@ const server = createServer(async (req, res) => {
       return;
     }
 
+    if (url.pathname === '/api/channels' && req.method === 'GET') {
+      handleGetChannels(res);
+      return;
+    }
+
     if (url.pathname === '/api/logs' && req.method === 'GET') {
       handleGetLogs(res);
       return;
@@ -278,7 +293,6 @@ const server = createServer(async (req, res) => {
       await handlePostEconomy(req, res);
       return;
     }
-
 
     logEvent('warn', 'api', 'Route not found', { method: req.method, path: url.pathname });
     sendError(res, 404, 'Not found');

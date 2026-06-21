@@ -15,13 +15,14 @@ function normalize(data: ApiPlayer[]): Player[] {
     .sort((a, b) => a.rank - b.rank);
 }
 
-export async function fetchLeaderboard(search = '', sort: SortMetric = 'kills'): Promise<{ players: Player[]; totalPlayers: number }> {
+export async function fetchLeaderboard(search = '', sort: SortMetric = 'kills', channel = ''): Promise<{ players: Player[]; totalPlayers: number }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 8000);
 
   try {
     const params = new URLSearchParams();
     if (search.trim()) params.set('search', search.trim());
+    if (channel.trim()) params.set('channel', channel.trim());
     params.set('sort', sort);
     const url = `/api/leaderboard${params.size ? `?${params}` : ''}`;
 
@@ -41,6 +42,28 @@ export async function fetchLeaderboard(search = '', sort: SortMetric = 'kills'):
       players: normalize(players),
       totalPlayers: Array.isArray(data) ? players.length : Number(data.totalPlayers ?? players.length),
     };
+  } catch (err) {
+    clearTimeout(timer);
+    throw err;
+  }
+}
+
+export async function fetchChannels(): Promise<string[]> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const res = await fetch('/api/channels', {
+      headers: { Accept: 'application/json' },
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+
+    if (!res.ok) throw new Error(`Server returned ${res.status} ${res.statusText}`);
+
+    const data: { channels?: unknown } = await res.json();
+    const channels = Array.isArray(data.channels) ? data.channels : [];
+    return channels.map(c => String(c).trim()).filter(Boolean);
   } catch (err) {
     clearTimeout(timer);
     throw err;

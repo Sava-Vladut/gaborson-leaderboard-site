@@ -18,7 +18,12 @@
       "Bash(curl -s http://127.0.0.1:3099/api/economy)",
       "Bash(npx eslint *)",
       "Bash(echo \"LINT EXIT: $?\")",
-      "Bash(npx vite *)"
+      "Bash(npx vite *)",
+      "PowerShell(npm run *)",
+      "PowerShell(docker compose build *)",
+      "PowerShell(docker compose up *)",
+      "PowerShell(docker compose ps *)",
+      "PowerShell(try { \\(Invoke-WebRequest -Uri 'http://localhost:3001/api/channels' -UseBasicParsing\\).Content } catch { $_.Exception.Message })"
     ]
   }
 }

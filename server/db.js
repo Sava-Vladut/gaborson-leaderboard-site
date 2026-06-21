@@ -26,7 +26,6 @@ db.exec(`
     updated_at      INTEGER NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_players_kills ON players (kills DESC, name ASC);
-
 `);
 
 db.exec('DROP TABLE IF EXISTS placement_history');
@@ -69,7 +68,8 @@ const LIST_SQL = `
       ROW_NUMBER() OVER (ORDER BY __ORDER_BY__ DESC, name ASC) AS rank
     FROM players
   )
-  WHERE @search = '' OR lower(name) LIKE @search_like
+  WHERE (@search = '' OR lower(name) LIKE @search_like)
+    AND (@channel = '' OR lastSeenChannel = @channel)
   ORDER BY rank ASC
   LIMIT @limit
 `;
@@ -115,6 +115,13 @@ const listBalancesStmt = db.prepare(`
 `);
 
 const countStmt = db.prepare('SELECT COUNT(*) AS n FROM players');
+
+const listChannelsStmt = db.prepare(`
+  SELECT DISTINCT last_seen_channel AS channel
+  FROM players
+  WHERE last_seen_channel <> ''
+  ORDER BY last_seen_channel ASC
+`);
 
 const statsTotalsStmt = db.prepare(`
   SELECT
@@ -280,12 +287,13 @@ const playerContextStmt = db.prepare(`
   WHERE ranked.rank = target.rank + 1
 `);
 
-export function listPlayers({ search = '', limit = 100, sort = 'kills' } = {}) {
+export function listPlayers({ search = '', limit = 100, sort = 'kills', channel = '' } = {}) {
   const q = String(search ?? '').trim().toLowerCase();
   const stmt = listStmts[sort] ?? listStmts.kills;
   return stmt.all({
     search: q,
     search_like: `%${q}%`,
+    channel: String(channel ?? '').trim(),
     limit: Math.max(1, Math.min(1000, Number(limit) || 100)),
   }).map((player) => ({
     name: player.name,
@@ -300,6 +308,10 @@ export function listPlayers({ search = '', limit = 100, sort = 'kills' } = {}) {
 
 export function countPlayers() {
   return countStmt.get().n;
+}
+
+export function listChannels() {
+  return listChannelsStmt.all().map((row) => row.channel);
 }
 
 export function getGlobalStats() {
