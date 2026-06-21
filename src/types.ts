@@ -74,18 +74,3 @@ export interface PlayerContext {
 }
 
 export type SortMetric = 'kills' | 'damageDealt' | 'damageReceived' | 'money';
-
-export type ShopCategory = 'Armor' | 'Weapon' | 'Utility';
-
-export interface ShopPriceItem {
-  key: string;
-  displayName: string;
-  category: ShopCategory;
-  defaultPrice: number;
-  price: number;
-  updatedAt: number;
-}
-
-export interface ShopPricesResponse {
-  items: ShopPriceItem[];
-}

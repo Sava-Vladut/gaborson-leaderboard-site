@@ -27,17 +27,10 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_players_kills ON players (kills DESC, name ASC);
 
-  CREATE TABLE IF NOT EXISTS shop_prices (
-    item_key      TEXT PRIMARY KEY,
-    display_name  TEXT NOT NULL,
-    category      TEXT NOT NULL,
-    default_price INTEGER NOT NULL DEFAULT 0 CHECK (default_price >= 0),
-    price         INTEGER NOT NULL DEFAULT 0 CHECK (price >= 0),
-    updated_at    INTEGER NOT NULL
-  );
 `);
 
 db.exec('DROP TABLE IF EXISTS placement_history');
+db.exec('DROP TABLE IF EXISTS shop_prices');
 
 // One-shot migrations for DBs created before these columns existed.
 const existingCols = db.prepare('PRAGMA table_info(players)').all().map((c) => c.name);
@@ -119,59 +112,6 @@ const listBalancesStmt = db.prepare(`
   SELECT name, money
   FROM players
   ORDER BY money DESC, name ASC
-`);
-
-const seedShopItemStmt = db.prepare(`
-  INSERT INTO shop_prices (item_key, display_name, category, default_price, price, updated_at)
-  VALUES (@item_key, @display_name, @category, @default_price, @price, @updated_at)
-  ON CONFLICT(item_key) DO NOTHING
-`);
-
-const upsertShopCatalogItemStmt = db.prepare(`
-  INSERT INTO shop_prices (item_key, display_name, category, default_price, price, updated_at)
-  VALUES (@item_key, @display_name, @category, @default_price, @default_price, @updated_at)
-  ON CONFLICT(item_key) DO UPDATE SET
-    display_name  = excluded.display_name,
-    category      = excluded.category,
-    default_price = excluded.default_price,
-    updated_at    = excluded.updated_at
-`);
-
-const updateShopPriceStmt = db.prepare(`
-  UPDATE shop_prices
-  SET price = @price, updated_at = @updated_at
-  WHERE item_key = @item_key
-`);
-
-const listShopPricesStmt = db.prepare(`
-  SELECT
-    item_key AS key,
-    display_name AS displayName,
-    category,
-    default_price AS defaultPrice,
-    price,
-    updated_at AS updatedAt
-  FROM shop_prices
-  ORDER BY
-    CASE category
-      WHEN 'Armor' THEN 0
-      WHEN 'Weapon' THEN 1
-      WHEN 'Utility' THEN 2
-      ELSE 3
-    END,
-    display_name ASC
-`);
-
-const getShopPriceStmt = db.prepare(`
-  SELECT
-    item_key AS key,
-    display_name AS displayName,
-    category,
-    default_price AS defaultPrice,
-    price,
-    updated_at AS updatedAt
-  FROM shop_prices
-  WHERE item_key = @item_key
 `);
 
 const countStmt = db.prepare('SELECT COUNT(*) AS n FROM players');
@@ -447,68 +387,6 @@ export function listBalances() {
     name: row.name,
     money: row.money,
   }));
-}
-
-export function listShopPrices() {
-  return listShopPricesStmt.all();
-}
-
-export function setShopPrice({ key, price }) {
-  updateShopPriceStmt.run({
-    item_key: key,
-    price,
-    updated_at: Date.now(),
-  });
-  return getShopPriceStmt.get({ item_key: key }) ?? null;
-}
-
-export function upsertShopCatalog(items) {
-  if (!Array.isArray(items) || items.length === 0) return 0;
-
-  const now = Date.now();
-  let changed = 0;
-  db.exec('BEGIN');
-  try {
-    for (const item of items) {
-      upsertShopCatalogItemStmt.run({
-        item_key: item.key,
-        display_name: item.displayName,
-        category: item.category,
-        default_price: item.defaultPrice,
-        updated_at: now,
-      });
-      changed++;
-    }
-    db.exec('COMMIT');
-  } catch (e) {
-    db.exec('ROLLBACK');
-    throw e;
-  }
-  return changed;
-}
-
-export function seedDefaultShopPrices() {
-  const defaults = [
-    { key: 'armor:light', displayName: 'Light Armor', category: 'Armor', defaultPrice: 250 },
-    { key: 'armor:medium', displayName: 'Medium Armor', category: 'Armor', defaultPrice: 950 },
-    { key: 'armor:heavy', displayName: 'Heavy Armor', category: 'Armor', defaultPrice: 1250 },
-    { key: 'weapon:thompson', displayName: 'Thompson', category: 'Weapon', defaultPrice: 1000 },
-    { key: 'utility:phys gun', displayName: 'Gravity Gun', category: 'Utility', defaultPrice: 100 },
-    { key: 'utility:grapple hook', displayName: 'Grapple Hook', category: 'Utility', defaultPrice: 300 },
-    { key: 'weapon:ak47', displayName: 'AK47', category: 'Weapon', defaultPrice: 450 },
-  ];
-
-  const now = Date.now();
-  for (const item of defaults) {
-    seedShopItemStmt.run({
-      item_key: item.key,
-      display_name: item.displayName,
-      category: item.category,
-      default_price: item.defaultPrice,
-      price: item.defaultPrice,
-      updated_at: now,
-    });
-  }
 }
 
 export async function importJsonIfEmpty(jsonPath) {

@@ -9,11 +9,7 @@ import {
   importJsonIfEmpty,
   listBalances,
   listPlayers,
-  listShopPrices,
-  seedDefaultShopPrices,
   setMoney,
-  setShopPrice,
-  upsertShopCatalog,
   upsertPlayer,
 } from './db.js';
 
@@ -143,74 +139,6 @@ function normalizeBalance(input) {
   return { balance: { name, money: Math.max(0, Math.floor(money)) } };
 }
 
-function normalizeShopKey(value) {
-  return String(value ?? '').trim().toLowerCase();
-}
-
-function normalizeShopCategory(value) {
-  const category = String(value ?? '').trim();
-  return ['Armor', 'Weapon', 'Utility'].includes(category) ? category : 'Weapon';
-}
-
-function normalizeShopPriceUpdate(input) {
-  const key = normalizeShopKey(input.key ?? input.itemKey);
-
-  if (!key) {
-    return { error: 'key is required' };
-  }
-
-  if (key.length > 80) {
-    return { error: 'key must be 80 characters or fewer' };
-  }
-
-  const price = Number(input.price);
-  if (!Number.isFinite(price)) {
-    return { error: 'price must be a number' };
-  }
-
-  return { item: { key, price: Math.max(0, Math.floor(price)) } };
-}
-
-function normalizeShopCatalog(input) {
-  const sourceItems = Array.isArray(input) ? input : input.items;
-
-  if (!Array.isArray(sourceItems)) {
-    return { error: 'items must be an array' };
-  }
-
-  const items = [];
-  for (const sourceItem of sourceItems) {
-    const key = normalizeShopKey(sourceItem.key ?? sourceItem.itemKey);
-    const displayName = String(sourceItem.displayName ?? sourceItem.name ?? '').trim();
-    const defaultPrice = Number(sourceItem.defaultPrice ?? sourceItem.price);
-
-    if (!key || !displayName) {
-      return { error: 'each item requires key and displayName' };
-    }
-
-    if (key.length > 80) {
-      return { error: 'item key must be 80 characters or fewer' };
-    }
-
-    if (displayName.length > 80) {
-      return { error: 'displayName must be 80 characters or fewer' };
-    }
-
-    if (!Number.isFinite(defaultPrice)) {
-      return { error: 'defaultPrice must be a number' };
-    }
-
-    items.push({
-      key,
-      displayName,
-      category: normalizeShopCategory(sourceItem.category),
-      defaultPrice: Math.max(0, Math.floor(defaultPrice)),
-    });
-  }
-
-  return { items };
-}
-
 function handleGetLeaderboard(url, res) {
   const search = url.searchParams.get('search') ?? '';
   const sort = url.searchParams.get('sort') ?? 'kills';
@@ -283,12 +211,6 @@ function handleGetEconomy(res) {
   sendJson(res, 200, balances);
 }
 
-function handleGetShopPrices(res) {
-  const items = listShopPrices();
-  logEvent('info', 'api', 'Shop prices fetched', { returned: items.length });
-  sendJson(res, 200, { items });
-}
-
 async function handlePostEconomy(req, res) {
   const body = await readJsonBody(req);
   const { balance, error } = normalizeBalance(body);
@@ -302,42 +224,6 @@ async function handlePostEconomy(req, res) {
   setMoney(balance);
   logEvent('info', 'unity', 'Economy update accepted', balance);
   sendJson(res, 201, { ok: true, balance });
-}
-
-async function handlePostShopPrices(req, res) {
-  const body = await readJsonBody(req);
-  const { item, error } = normalizeShopPriceUpdate(body);
-
-  if (error) {
-    logEvent('warn', 'admin', 'Rejected shop price update', { error });
-    sendError(res, 400, error);
-    return;
-  }
-
-  const updated = setShopPrice(item);
-  if (!updated) {
-    logEvent('warn', 'admin', 'Shop price item not found', { key: item.key });
-    sendError(res, 404, 'shop item not found');
-    return;
-  }
-
-  logEvent('info', 'admin', 'Shop price updated', updated);
-  sendJson(res, 200, { ok: true, item: updated, items: listShopPrices() });
-}
-
-async function handlePostShopCatalog(req, res) {
-  const body = await readJsonBody(req);
-  const { items, error } = normalizeShopCatalog(body);
-
-  if (error) {
-    logEvent('warn', 'unity', 'Rejected shop catalog sync', { error });
-    sendError(res, 400, error);
-    return;
-  }
-
-  const updated = upsertShopCatalog(items);
-  logEvent('info', 'unity', 'Shop catalog synced', { updated });
-  sendJson(res, 200, { ok: true, updated, items: listShopPrices() });
 }
 
 const server = createServer(async (req, res) => {
@@ -393,20 +279,6 @@ const server = createServer(async (req, res) => {
       return;
     }
 
-    if (url.pathname === '/api/shop-prices' && req.method === 'GET') {
-      handleGetShopPrices(res);
-      return;
-    }
-
-    if (url.pathname === '/api/shop-prices' && req.method === 'POST') {
-      await handlePostShopPrices(req, res);
-      return;
-    }
-
-    if (url.pathname === '/api/shop-catalog' && req.method === 'POST') {
-      await handlePostShopCatalog(req, res);
-      return;
-    }
 
     logEvent('warn', 'api', 'Route not found', { method: req.method, path: url.pathname });
     sendError(res, 404, 'Not found');
@@ -422,7 +294,6 @@ const server = createServer(async (req, res) => {
 });
 
 const imported = await importJsonIfEmpty(DATA_FILE);
-seedDefaultShopPrices();
 if (imported > 0) {
   logEvent('info', 'db', 'Imported JSON seed data', { imported, dataFile: DATA_FILE });
   console.log(`Imported ${imported} rows from ${DATA_FILE} into ${DB_FILE}`);
