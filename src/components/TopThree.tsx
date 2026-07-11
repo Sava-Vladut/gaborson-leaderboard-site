@@ -1,5 +1,6 @@
 import { Crown, Medal } from 'lucide-react';
 import { formatMoney } from '../api/economy';
+import { getRatingTier } from '../ranking';
 import type { Player, SortMetric } from '../types';
 
 function fmt(n: number): string {
@@ -42,6 +43,7 @@ const CFG = {
 } as const;
 
 const METRIC_LABELS: Record<SortMetric, string> = {
+  rating: 'combat rating',
   kills: 'kills',
   damageDealt: 'damage dealt',
   damageReceived: 'damage taken',
@@ -98,7 +100,7 @@ function PodiumCard({
             {sortMetric === 'money' ? formatMoney(metricValue) : fmt(metricValue)}
           </p>
           <p className="font-pixel text-lg text-ink-ghost uppercase tracking-wider mt-1.5">
-            {METRIC_LABELS[sortMetric]}
+            {sortMetric === 'rating' ? getRatingTier(player.rating).name : METRIC_LABELS[sortMetric]}
           </p>
         </div>
 

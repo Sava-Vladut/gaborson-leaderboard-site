@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   DB_FILE,
+  applyEloKillEvent,
   countPlayers,
   getGlobalStats,
   getPlayerContext,
@@ -95,6 +96,11 @@ function normalizePlayer(input) {
     return { error: 'kills must be a non-negative integer' };
   }
 
+  const deaths = input.deaths === undefined ? 0 : Number(input.deaths);
+  if (!Number.isFinite(deaths) || deaths < 0 || !Number.isInteger(deaths)) {
+    return { error: 'deaths must be a non-negative integer' };
+  }
+
   // Optional damage stats — default to 0 when omitted by older clients.
   const damageDealt = input.damageDealt === undefined ? 0 : Number(input.damageDealt);
   if (!Number.isFinite(damageDealt) || damageDealt < 0 || !Number.isInteger(damageDealt)) {
@@ -111,7 +117,26 @@ function normalizePlayer(input) {
     return { error: 'lastSeenChannel must be 80 characters or fewer' };
   }
 
-  return { player: { name, kills, damageDealt, damageReceived, lastSeenChannel } };
+  return { player: { name, kills, deaths, damageDealt, damageReceived, lastSeenChannel } };
+}
+
+function normalizeEloEvent(input) {
+  const eventId = String(input.eventId ?? '').trim();
+  const killerName = String(input.killerName ?? input.killer ?? '').trim();
+  const victimName = String(input.victimName ?? input.victim ?? '').trim();
+
+  if (!eventId) return { error: 'eventId is required' };
+  if (eventId.length > 80) return { error: 'eventId must be 80 characters or fewer' };
+  if (!killerName) return { error: 'killerName is required' };
+  if (!victimName) return { error: 'victimName is required' };
+  if (killerName.length > 40 || victimName.length > 40) {
+    return { error: 'player names must be 40 characters or fewer' };
+  }
+  if (killerName.toLowerCase() === victimName.toLowerCase()) {
+    return { error: 'killerName and victimName must be different players' };
+  }
+
+  return { event: { eventId, killerName, victimName } };
 }
 
 function normalizeChannelName(value) {
@@ -142,7 +167,7 @@ function normalizeBalance(input) {
 
 function handleGetLeaderboard(url, res) {
   const search = url.searchParams.get('search') ?? '';
-  const sort = url.searchParams.get('sort') ?? 'kills';
+  const sort = url.searchParams.get('sort') ?? 'rating';
   const channel = url.searchParams.get('channel') ?? '';
   const players = listPlayers({
     search,
@@ -214,6 +239,21 @@ async function handlePostLeaderboard(req, res) {
   sendJson(res, 201, { ok: true, player, leaderboard: listPlayers() });
 }
 
+async function handlePostEloEvent(req, res) {
+  const body = await readJsonBody(req);
+  const { event, error } = normalizeEloEvent(body);
+
+  if (error) {
+    logEvent('warn', 'unity', 'Rejected ELO event', { error });
+    sendError(res, 400, error);
+    return;
+  }
+
+  const result = applyEloKillEvent(event);
+  logEvent('info', 'unity', result.duplicate ? 'Duplicate ELO event ignored' : 'ELO event applied', result);
+  sendJson(res, result.duplicate ? 200 : 201, { ok: true, ...result });
+}
+
 function handleGetEconomy(res) {
   // Bare array, mirroring GET /api/leaderboard's shape for the Unity client.
   const balances = listBalances();
@@ -281,6 +321,11 @@ const server = createServer(async (req, res) => {
 
     if (url.pathname === '/api/leaderboard' && req.method === 'POST') {
       await handlePostLeaderboard(req, res);
+      return;
+    }
+
+    if (url.pathname === '/api/elo/events' && req.method === 'POST') {
+      await handlePostEloEvent(req, res);
       return;
     }
 

@@ -1,20 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   X, Crown, Medal, ChevronUp, ChevronDown,
-  Crosshair, Skull, Swords, HeartCrack, Coins, Hash, Target, Radio,
+  Crosshair, Skull, Swords, HeartCrack, Coins, Hash, Radio, Shield,
 } from 'lucide-react';
 import { fetchPlayerContext } from '../api/leaderboard';
 import { formatMoney } from '../api/economy';
+import { getRatingTier, getRatingTierProgress } from '../ranking';
+import RatingBadge from './RatingBadge';
 import type { Player, PlayerContext } from '../types';
 
 /* ─── helpers ─────────────────────────────────────────────── */
-
-function playerColor(name: string): string {
-  const p = ['#00e0ff', '#f0b830', '#ff6b6b', '#a78bfa', '#34d399', '#fb923c', '#60a5fa'];
-  let h = 0;
-  for (const c of name) h = (h * 31 + c.charCodeAt(0)) % p.length;
-  return p[h];
-}
 
 function fmt(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -54,7 +49,7 @@ const PANEL_CLIP = `polygon(${NOTCH}px 0, calc(100% - ${NOTCH}px) 0, 100% ${NOTC
 function useDecode(target: string, active: boolean): string {
   const [out, setOut] = useState(target);
   useEffect(() => {
-    if (!active) { setOut(target); return; }
+    if (!active) return;
     const glyphs = '0123456789ABCDEF';
     let frame = 0;
     const id = window.setInterval(() => {
@@ -70,7 +65,7 @@ function useDecode(target: string, active: boolean): string {
     }, 45);
     return () => window.clearInterval(id);
   }, [target, active]);
-  return out;
+  return active ? out : target;
 }
 
 /* ─── component ───────────────────────────────────────────── */
@@ -97,20 +92,21 @@ export default function PlayerProfileModal({
   const close = useCallback(() => setClosing(true), []);
 
   const activeContext = context?.player.name.toLowerCase() === player.name.toLowerCase() ? context : null;
-  const color = playerColor(player.name);
-  const badge = RANK_BADGE[player.rank];
+  const tier = getRatingTier(player.rating);
+  const color = tier.color;
+  const badge = RANK_BADGE[player.ratingRank];
   const code  = useDecode(idCode(player.name), !closing);
 
   const totalPlayers = activeContext?.totalPlayers ?? fallbackTotalPlayers;
-  const topPct       = Math.max(1, Math.ceil((player.rank / totalPlayers) * 100));
+  const topPct       = Math.max(1, Math.ceil((player.ratingRank / totalPlayers) * 100));
   const outranked    = 100 - topPct;
   const pc           = pctColor(topPct);
   const leaderKills  = activeContext?.leaderKills ?? players[0]?.kills ?? 0;
   const killsRating  = leaderKills > 0 ? Math.round((player.kills / leaderKills) * 100) : 0;
-  const playerAbove  = activeContext?.above ?? players.find(p => p.rank === player.rank - 1);
-  const playerBelow  = activeContext?.below ?? players.find(p => p.rank === player.rank + 1);
-  const gapUp        = playerAbove ? playerAbove.kills - player.kills : null;
-  const gapDown      = playerBelow ? player.kills - playerBelow.kills : null;
+  const playerAbove  = activeContext?.above ?? players.find(p => p.ratingRank === player.ratingRank - 1);
+  const playerBelow  = activeContext?.below ?? players.find(p => p.ratingRank === player.ratingRank + 1);
+  const gapUp        = playerAbove ? playerAbove.rating - player.rating : null;
+  const gapDown      = playerBelow ? player.rating - playerBelow.rating : null;
 
   // Field maxima → magnitude bars on every tile (guarded against empty/zero).
   const max = useMemo(() => {
@@ -132,7 +128,6 @@ export default function PlayerProfileModal({
 
   useEffect(() => {
     let cancelled = false;
-    setContext(null);
     fetchPlayerContext(player.name)
       .then(nextContext => { if (!cancelled) setContext(nextContext); })
       .catch(() => { if (!cancelled) setContext(null); });
@@ -140,12 +135,13 @@ export default function PlayerProfileModal({
   }, [player.name]);
 
   const stats = [
+    { label: 'Combat Rating', Icon: Shield,     value: fmt(player.rating),           cls: '',             bar: getRatingTierProgress(player.rating),          barC: tier.color },
     { label: 'Kills',        Icon: Skull,      value: fmt(player.kills),            cls: 'text-ink',     bar: killsRating,                                  barC: color     },
+    { label: 'Deaths',       Icon: HeartCrack, value: fmt(player.deaths),           cls: 'text-danger',  bar: player.kills + player.deaths > 0 ? (player.deaths / (player.kills + player.deaths)) * 100 : 0, barC: '#ff3050' },
     { label: 'Damage Dealt', Icon: Swords,     value: fmt(player.damageDealt),      cls: 'text-gold',    bar: (player.damageDealt / max.dealt) * 100,       barC: '#f0b830' },
     { label: 'Damage Taken', Icon: HeartCrack, value: fmt(player.damageReceived),   cls: 'text-danger',  bar: (player.damageReceived / max.taken) * 100,    barC: '#ff3050' },
     { label: 'Balance',      Icon: Coins,      value: formatMoney(player.money),    cls: 'text-success', bar: (player.money / max.money) * 100,             barC: '#00ff80' },
-    { label: 'Global Rank',  Icon: Hash,       value: `#${player.rank}`,            cls: 'text-accent',  bar: outranked,                                    barC: '#00e0ff' },
-    { label: 'Kills Rating', Icon: Target,     value: `${killsRating}%`,            cls: 'text-ink-dim', bar: killsRating,                                  barC: '#7a9bb8' },
+    { label: 'Rating Rank',  Icon: Hash,       value: `#${player.ratingRank}`,      cls: 'text-accent',  bar: outranked,                                    barC: '#00e0ff' },
     { label: 'Last Seen',    Icon: Radio,      value: player.lastSeenChannel ? `#${player.lastSeenChannel}` : '-', cls: 'text-accent', bar: player.lastSeenChannel ? 100 : 3, barC: '#00e0ff' },
   ];
 
@@ -208,7 +204,7 @@ export default function PlayerProfileModal({
                 {/* Watermark rank */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
                   <span className="font-pixel leading-none opacity-[0.05] -rotate-12 translate-y-6"
-                    style={{ color, fontSize: 'clamp(110px, 15vw, 170px)' }}>#{player.rank}</span>
+                    style={{ color, fontSize: 'clamp(110px, 15vw, 170px)' }}>#{player.ratingRank}</span>
                 </div>
 
                 {/* Lock-on targeting brackets */}
@@ -229,7 +225,7 @@ export default function PlayerProfileModal({
                       boxShadow: `0 0 34px ${color}25, inset 0 0 22px ${color}0c`,
                     }}
                   >
-                    #{player.rank}
+                    #{player.ratingRank}
                   </div>
 
                   {badge && (
@@ -247,8 +243,9 @@ export default function PlayerProfileModal({
                 <div className="relative z-10 text-center max-w-full">
                   <h2 className="font-pixel text-2xl text-ink leading-tight break-words">{player.name}</h2>
                   <p className="font-pixel text-base text-ink-dim mt-1 tracking-wide">
-                    Rank <span className="text-ink">#{player.rank}</span> of {totalPlayers.toLocaleString()}
+                    Rating rank <span className="text-ink">#{player.ratingRank}</span> of {totalPlayers.toLocaleString()}
                   </p>
+                  <div className="mt-3"><RatingBadge rating={player.rating} /></div>
                 </div>
 
                 {/* Percentile arc gauge */}
@@ -270,7 +267,7 @@ export default function PlayerProfileModal({
                     </div>
                   </div>
                   <p className="font-pixel text-base text-ink-dim text-center -mt-1">
-                    ahead of <span className="text-ink">{(totalPlayers - player.rank).toLocaleString()}</span> players
+                    ahead of <span className="text-ink">{(totalPlayers - player.ratingRank).toLocaleString()}</span> players
                   </p>
                 </div>
               </div>
@@ -310,7 +307,7 @@ export default function PlayerProfileModal({
                   <div className="flex items-center justify-between gap-3 mb-3">
                     <p className="font-pixel text-base text-ink-ghost uppercase tracking-[0.2em]">Rank Position</p>
                     <p className="font-pixel text-base text-ink-dim">
-                      #{player.rank} <span className="text-ink-ghost">of {totalPlayers.toLocaleString()}</span>
+                      #{player.ratingRank} <span className="text-ink-ghost">of {totalPlayers.toLocaleString()}</span>
                     </p>
                   </div>
 
@@ -326,9 +323,9 @@ export default function PlayerProfileModal({
                       <p className="text-sm text-ink-ghost uppercase tracking-wider mb-1.5">Below</p>
                       {playerBelow ? (
                         <>
-                          <p className="text-lg text-ink truncate">#{playerBelow.rank} {playerBelow.name}</p>
+                          <p className="text-lg text-ink truncate">#{playerBelow.ratingRank} {playerBelow.name}</p>
                           <p className="text-sm text-success mt-1 flex items-center gap-1">
-                            <ChevronDown className="w-3.5 h-3.5" /> {fmt(gapDown!)} kills behind
+                            <ChevronDown className="w-3.5 h-3.5" /> {fmt(gapDown!)} rating behind
                           </p>
                         </>
                       ) : (
@@ -343,8 +340,8 @@ export default function PlayerProfileModal({
                     <div className="rounded-md border p-3 text-center min-w-0 relative overflow-hidden"
                       style={{ borderColor: `${color}55`, backgroundColor: `${color}12`, boxShadow: `inset 0 0 22px ${color}10` }}>
                       <p className="text-sm uppercase tracking-[0.2em] mb-1.5" style={{ color }}>You</p>
-                      <p className="text-xl text-ink truncate">#{player.rank} {player.name}</p>
-                      <p className="text-sm text-ink-dim mt-1">{fmt(player.kills)} kills</p>
+                      <p className="text-xl text-ink truncate">#{player.ratingRank} {player.name}</p>
+                      <p className="text-sm text-ink-dim mt-1">{fmt(player.rating)} rating</p>
                     </div>
 
                     {/* ABOVE */}
@@ -356,9 +353,9 @@ export default function PlayerProfileModal({
                         aria-label={`Open profile for ${playerAbove.name}`}
                       >
                         <p className="text-sm text-ink-ghost uppercase tracking-wider mb-1.5">Above</p>
-                        <p className="text-lg text-ink truncate">#{playerAbove.rank} {playerAbove.name}</p>
+                        <p className="text-lg text-ink truncate">#{playerAbove.ratingRank} {playerAbove.name}</p>
                         <p className="text-sm text-danger mt-1 flex items-center gap-1 sm:justify-end">
-                          <ChevronUp className="w-3.5 h-3.5" /> {fmt(gapUp!)} kills ahead
+                          <ChevronUp className="w-3.5 h-3.5" /> {fmt(gapUp!)} rating ahead
                         </p>
                       </button>
                     )}

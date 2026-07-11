@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { existsSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { calculateEloKill, DEFAULT_ELO_RATING } from './ranking.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DB_FILE = process.env.LEADERBOARD_DB_FILE ?? join(__dirname, 'leaderboard.db');
@@ -19,6 +20,8 @@ db.exec(`
     name_key        TEXT PRIMARY KEY,
     name            TEXT NOT NULL,
     kills           INTEGER NOT NULL DEFAULT 0 CHECK (kills >= 0),
+    deaths          INTEGER NOT NULL DEFAULT 0 CHECK (deaths >= 0),
+    rating          INTEGER NOT NULL DEFAULT ${DEFAULT_ELO_RATING} CHECK (rating >= 0),
     damage_dealt    INTEGER NOT NULL DEFAULT 0 CHECK (damage_dealt >= 0),
     damage_received INTEGER NOT NULL DEFAULT 0 CHECK (damage_received >= 0),
     money           INTEGER NOT NULL DEFAULT 0 CHECK (money >= 0),
@@ -26,6 +29,18 @@ db.exec(`
     updated_at      INTEGER NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_players_kills ON players (kills DESC, name ASC);
+
+  CREATE TABLE IF NOT EXISTS elo_events (
+    event_id        TEXT PRIMARY KEY,
+    killer_key      TEXT NOT NULL,
+    victim_key      TEXT NOT NULL,
+    killer_before   INTEGER NOT NULL,
+    victim_before   INTEGER NOT NULL,
+    killer_after    INTEGER NOT NULL,
+    victim_after    INTEGER NOT NULL,
+    delta           INTEGER NOT NULL,
+    created_at      INTEGER NOT NULL
+  );
 `);
 
 db.exec('DROP TABLE IF EXISTS placement_history');
@@ -36,6 +51,12 @@ const existingCols = db.prepare('PRAGMA table_info(players)').all().map((c) => c
 if (!existingCols.includes('damage_dealt')) {
   db.exec('ALTER TABLE players ADD COLUMN damage_dealt INTEGER NOT NULL DEFAULT 0 CHECK (damage_dealt >= 0)');
 }
+if (!existingCols.includes('deaths')) {
+  db.exec('ALTER TABLE players ADD COLUMN deaths INTEGER NOT NULL DEFAULT 0 CHECK (deaths >= 0)');
+}
+if (!existingCols.includes('rating')) {
+  db.exec(`ALTER TABLE players ADD COLUMN rating INTEGER NOT NULL DEFAULT ${DEFAULT_ELO_RATING} CHECK (rating >= 0)`);
+}
 if (!existingCols.includes('damage_received')) {
   db.exec('ALTER TABLE players ADD COLUMN damage_received INTEGER NOT NULL DEFAULT 0 CHECK (damage_received >= 0)');
 }
@@ -45,27 +66,34 @@ if (!existingCols.includes('money')) {
 if (!existingCols.includes('last_seen_channel')) {
   db.exec("ALTER TABLE players ADD COLUMN last_seen_channel TEXT NOT NULL DEFAULT ''");
 }
+db.exec('CREATE INDEX IF NOT EXISTS idx_players_rating ON players (rating DESC, name ASC)');
 
 const LIST_SQL = `
   SELECT
     nameKey,
     name,
     kills,
+    deaths,
+    rating,
     damageDealt,
     damageReceived,
     money,
     lastSeenChannel,
-    rank
+    rank,
+    ratingRank
   FROM (
     SELECT
       name_key AS nameKey,
       name,
       kills,
+      deaths,
+      rating,
       damage_dealt AS damageDealt,
       damage_received AS damageReceived,
       money,
       last_seen_channel AS lastSeenChannel,
-      ROW_NUMBER() OVER (ORDER BY __ORDER_BY__ DESC, name ASC) AS rank
+      ROW_NUMBER() OVER (ORDER BY __ORDER_BY__ DESC, name ASC) AS rank,
+      ROW_NUMBER() OVER (ORDER BY rating DESC, name ASC) AS ratingRank
     FROM players
   )
   WHERE (@search = '' OR lower(name) LIKE @search_like)
@@ -75,6 +103,7 @@ const LIST_SQL = `
 `;
 
 const listStmts = {
+  rating: db.prepare(LIST_SQL.replaceAll('__ORDER_BY__', 'rating')),
   kills: db.prepare(LIST_SQL.replaceAll('__ORDER_BY__', 'kills')),
   damageDealt: db.prepare(LIST_SQL.replaceAll('__ORDER_BY__', 'damage_dealt')),
   damageReceived: db.prepare(LIST_SQL.replaceAll('__ORDER_BY__', 'damage_received')),
@@ -82,11 +111,12 @@ const listStmts = {
 };
 
 const upsertStmt = db.prepare(`
-  INSERT INTO players (name_key, name, kills, damage_dealt, damage_received, last_seen_channel, updated_at)
-  VALUES (@name_key, @name, @kills, @damage_dealt, @damage_received, @last_seen_channel, @updated_at)
+  INSERT INTO players (name_key, name, kills, deaths, damage_dealt, damage_received, last_seen_channel, updated_at)
+  VALUES (@name_key, @name, @kills, @deaths, @damage_dealt, @damage_received, @last_seen_channel, @updated_at)
   ON CONFLICT(name_key) DO UPDATE SET
     name            = excluded.name,
     kills           = MAX(excluded.kills, players.kills),
+    deaths          = MAX(excluded.deaths, players.deaths),
     damage_dealt    = players.damage_dealt + excluded.damage_dealt,
     damage_received = players.damage_received + excluded.damage_received,
     last_seen_channel = CASE
@@ -94,6 +124,49 @@ const upsertStmt = db.prepare(`
       ELSE players.last_seen_channel
     END,
     updated_at      = excluded.updated_at
+`);
+
+const ensureRatedPlayerStmt = db.prepare(`
+  INSERT INTO players (name_key, name, rating, updated_at)
+  VALUES (@name_key, @name, ${DEFAULT_ELO_RATING}, @updated_at)
+  ON CONFLICT(name_key) DO UPDATE SET
+    name = excluded.name
+`);
+
+const selectRatingStmt = db.prepare(`
+  SELECT name, rating
+  FROM players
+  WHERE name_key = @name_key
+`);
+
+const updateRatingStmt = db.prepare(`
+  UPDATE players
+  SET rating = @rating, updated_at = @updated_at
+  WHERE name_key = @name_key
+`);
+
+const selectEloEventStmt = db.prepare(`
+  SELECT
+    event_id AS eventId,
+    killer_key AS killerKey,
+    victim_key AS victimKey,
+    killer_before AS killerBefore,
+    victim_before AS victimBefore,
+    killer_after AS killerAfter,
+    victim_after AS victimAfter,
+    delta
+  FROM elo_events
+  WHERE event_id = @event_id
+`);
+
+const insertEloEventStmt = db.prepare(`
+  INSERT INTO elo_events (
+    event_id, killer_key, victim_key, killer_before, victim_before,
+    killer_after, victim_after, delta, created_at
+  ) VALUES (
+    @event_id, @killer_key, @victim_key, @killer_before, @victim_before,
+    @killer_after, @victim_after, @delta, @created_at
+  )
 `);
 
 // Economy: money is an absolute SET (overwrite), unlike kills (MAX) and damage
@@ -138,14 +211,17 @@ const statsTopKillsStmt = db.prepare(`
     SELECT
       name,
       kills,
+      deaths,
+      rating,
       damage_dealt AS damageDealt,
       damage_received AS damageReceived,
       money,
       last_seen_channel AS lastSeenChannel,
-      ROW_NUMBER() OVER (ORDER BY kills DESC, name ASC) AS rank
+      ROW_NUMBER() OVER (ORDER BY kills DESC, name ASC) AS rank,
+      ROW_NUMBER() OVER (ORDER BY rating DESC, name ASC) AS ratingRank
     FROM players
   )
-  SELECT name, kills, damageDealt, damageReceived, money, lastSeenChannel, rank
+  SELECT name, kills, deaths, rating, damageDealt, damageReceived, money, lastSeenChannel, rank, ratingRank
   FROM ranked
   ORDER BY rank ASC
   LIMIT 5
@@ -171,14 +247,17 @@ const statsDamageLeaderStmt = db.prepare(`
     SELECT
       name,
       kills,
+      deaths,
+      rating,
       damage_dealt AS damageDealt,
       damage_received AS damageReceived,
       money,
       last_seen_channel AS lastSeenChannel,
-      ROW_NUMBER() OVER (ORDER BY kills DESC, name ASC) AS rank
+      ROW_NUMBER() OVER (ORDER BY kills DESC, name ASC) AS rank,
+      ROW_NUMBER() OVER (ORDER BY rating DESC, name ASC) AS ratingRank
     FROM players
   )
-  SELECT name, kills, damageDealt, damageReceived, money, lastSeenChannel, rank
+  SELECT name, kills, deaths, rating, damageDealt, damageReceived, money, lastSeenChannel, rank, ratingRank
   FROM ranked
   ORDER BY damageDealt DESC, name ASC
   LIMIT 1
@@ -189,14 +268,17 @@ const statsMoneyLeaderStmt = db.prepare(`
     SELECT
       name,
       kills,
+      deaths,
+      rating,
       damage_dealt AS damageDealt,
       damage_received AS damageReceived,
       money,
       last_seen_channel AS lastSeenChannel,
-      ROW_NUMBER() OVER (ORDER BY kills DESC, name ASC) AS rank
+      ROW_NUMBER() OVER (ORDER BY kills DESC, name ASC) AS rank,
+      ROW_NUMBER() OVER (ORDER BY rating DESC, name ASC) AS ratingRank
     FROM players
   )
-  SELECT name, kills, damageDealt, damageReceived, money, lastSeenChannel, rank
+  SELECT name, kills, deaths, rating, damageDealt, damageReceived, money, lastSeenChannel, rank, ratingRank
   FROM ranked
   ORDER BY money DESC, name ASC
   LIMIT 1
@@ -207,14 +289,17 @@ const statsEfficiencyLeaderStmt = db.prepare(`
     SELECT
       name,
       kills,
+      deaths,
+      rating,
       damage_dealt AS damageDealt,
       damage_received AS damageReceived,
       money,
       last_seen_channel AS lastSeenChannel,
-      ROW_NUMBER() OVER (ORDER BY kills DESC, name ASC) AS rank
+      ROW_NUMBER() OVER (ORDER BY kills DESC, name ASC) AS rank,
+      ROW_NUMBER() OVER (ORDER BY rating DESC, name ASC) AS ratingRank
     FROM players
   )
-  SELECT name, kills, damageDealt, damageReceived, money, lastSeenChannel, rank
+  SELECT name, kills, deaths, rating, damageDealt, damageReceived, money, lastSeenChannel, rank, ratingRank
   FROM ranked
   ORDER BY
     CASE
@@ -230,17 +315,20 @@ const playerContextStmt = db.prepare(`
     SELECT
       name,
       kills,
+      deaths,
+      rating,
       damage_dealt AS damageDealt,
       damage_received AS damageReceived,
       money,
       last_seen_channel AS lastSeenChannel,
-      ROW_NUMBER() OVER (ORDER BY kills DESC, name ASC) AS rank,
+      ROW_NUMBER() OVER (ORDER BY rating DESC, name ASC) AS rank,
       COUNT(*) OVER () AS totalPlayers,
-      FIRST_VALUE(kills) OVER (ORDER BY kills DESC, name ASC) AS leaderKills
+      MAX(kills) OVER () AS leaderKills,
+      FIRST_VALUE(rating) OVER (ORDER BY rating DESC, name ASC) AS leaderRating
     FROM players
   ),
   target AS (
-    SELECT rank, totalPlayers, leaderKills
+    SELECT rank, totalPlayers, leaderKills, leaderRating
     FROM ranked
     WHERE lower(name) = @name_key
   )
@@ -248,13 +336,16 @@ const playerContextStmt = db.prepare(`
     'player' AS kind,
     ranked.name,
     ranked.kills,
+    ranked.deaths,
+    ranked.rating,
     ranked.damageDealt,
     ranked.damageReceived,
     ranked.money,
     ranked.lastSeenChannel,
     ranked.rank,
     target.totalPlayers,
-    target.leaderKills
+    target.leaderKills,
+    target.leaderRating
   FROM ranked, target
   WHERE ranked.rank = target.rank
   UNION ALL
@@ -262,13 +353,16 @@ const playerContextStmt = db.prepare(`
     'above' AS kind,
     ranked.name,
     ranked.kills,
+    ranked.deaths,
+    ranked.rating,
     ranked.damageDealt,
     ranked.damageReceived,
     ranked.money,
     ranked.lastSeenChannel,
     ranked.rank,
     target.totalPlayers,
-    target.leaderKills
+    target.leaderKills,
+    target.leaderRating
   FROM ranked, target
   WHERE ranked.rank = target.rank - 1
   UNION ALL
@@ -276,20 +370,23 @@ const playerContextStmt = db.prepare(`
     'below' AS kind,
     ranked.name,
     ranked.kills,
+    ranked.deaths,
+    ranked.rating,
     ranked.damageDealt,
     ranked.damageReceived,
     ranked.money,
     ranked.lastSeenChannel,
     ranked.rank,
     target.totalPlayers,
-    target.leaderKills
+    target.leaderKills,
+    target.leaderRating
   FROM ranked, target
   WHERE ranked.rank = target.rank + 1
 `);
 
-export function listPlayers({ search = '', limit = 100, sort = 'kills', channel = '' } = {}) {
+export function listPlayers({ search = '', limit = 100, sort = 'rating', channel = '' } = {}) {
   const q = String(search ?? '').trim().toLowerCase();
-  const stmt = listStmts[sort] ?? listStmts.kills;
+  const stmt = listStmts[sort] ?? listStmts.rating;
   return stmt.all({
     search: q,
     search_like: `%${q}%`,
@@ -298,11 +395,14 @@ export function listPlayers({ search = '', limit = 100, sort = 'kills', channel 
   }).map((player) => ({
     name: player.name,
     kills: player.kills,
+    deaths: player.deaths,
+    rating: player.rating,
     damageDealt: player.damageDealt,
     damageReceived: player.damageReceived,
     money: player.money,
     lastSeenChannel: player.lastSeenChannel,
     rank: player.rank,
+    ratingRank: player.ratingRank,
   }));
 }
 
@@ -357,32 +457,99 @@ export function getPlayerContext(name) {
   const toPlayer = (row) => row ? ({
     name: row.name,
     kills: row.kills,
+    deaths: row.deaths,
+    rating: row.rating,
     damageDealt: row.damageDealt,
     damageReceived: row.damageReceived,
     money: row.money,
     lastSeenChannel: row.lastSeenChannel,
     rank: row.rank,
+    ratingRank: row.rank,
   }) : null;
 
   return {
     totalPlayers: player.totalPlayers,
     leaderKills: player.leaderKills,
+    leaderRating: player.leaderRating,
     player: toPlayer(player),
     above: toPlayer(rows.find((row) => row.kind === 'above')),
     below: toPlayer(rows.find((row) => row.kind === 'below')),
   };
 }
 
-export function upsertPlayer({ name, kills, damageDealt = 0, damageReceived = 0, lastSeenChannel = '' }) {
+export function upsertPlayer({ name, kills, deaths = 0, damageDealt = 0, damageReceived = 0, lastSeenChannel = '' }) {
   upsertStmt.run({
     name_key: name.toLowerCase(),
     name,
     kills,
+    deaths,
     damage_dealt: damageDealt,
     damage_received: damageReceived,
     last_seen_channel: lastSeenChannel,
     updated_at: Date.now(),
   });
+}
+
+export function applyEloKillEvent({ eventId, killerName, victimName }) {
+  const killerKey = killerName.toLowerCase();
+  const victimKey = victimName.toLowerCase();
+  const now = Date.now();
+
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const existing = selectEloEventStmt.get({ event_id: eventId });
+    if (existing) {
+      const currentKiller = selectRatingStmt.get({ name_key: existing.killerKey });
+      const currentVictim = selectRatingStmt.get({ name_key: existing.victimKey });
+      db.exec('COMMIT');
+      return {
+        eventId,
+        duplicate: true,
+        killer: {
+          name: currentKiller?.name ?? killerName,
+          rating: currentKiller?.rating ?? existing.killerAfter,
+          delta: existing.delta,
+        },
+        victim: {
+          name: currentVictim?.name ?? victimName,
+          rating: currentVictim?.rating ?? existing.victimAfter,
+          delta: -existing.delta,
+        },
+      };
+    }
+
+    ensureRatedPlayerStmt.run({ name_key: killerKey, name: killerName, updated_at: now });
+    ensureRatedPlayerStmt.run({ name_key: victimKey, name: victimName, updated_at: now });
+
+    const killer = selectRatingStmt.get({ name_key: killerKey });
+    const victim = selectRatingStmt.get({ name_key: victimKey });
+    const result = calculateEloKill(killer.rating, victim.rating);
+
+    updateRatingStmt.run({ name_key: killerKey, rating: result.killerRating, updated_at: now });
+    updateRatingStmt.run({ name_key: victimKey, rating: result.victimRating, updated_at: now });
+    insertEloEventStmt.run({
+      event_id: eventId,
+      killer_key: killerKey,
+      victim_key: victimKey,
+      killer_before: killer.rating,
+      victim_before: victim.rating,
+      killer_after: result.killerRating,
+      victim_after: result.victimRating,
+      delta: result.delta,
+      created_at: now,
+    });
+
+    db.exec('COMMIT');
+    return {
+      eventId,
+      duplicate: false,
+      killer: { name: killer.name, rating: result.killerRating, delta: result.delta },
+      victim: { name: victim.name, rating: result.victimRating, delta: -result.delta },
+    };
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
 }
 
 export function setMoney({ name, money }) {
@@ -423,10 +590,12 @@ export async function importJsonIfEmpty(jsonPath) {
       if (!name || !Number.isFinite(kills) || kills < 0 || !Number.isInteger(kills)) continue;
       const damageDealt = Number(item.damageDealt ?? 0);
       const damageReceived = Number(item.damageReceived ?? 0);
+      const deaths = Number(item.deaths ?? 0);
       upsertStmt.run({
         name_key: name.toLowerCase(),
         name,
         kills,
+        deaths: Number.isInteger(deaths) && deaths >= 0 ? deaths : 0,
         damage_dealt: Number.isInteger(damageDealt) && damageDealt >= 0 ? damageDealt : 0,
         damage_received: Number.isInteger(damageReceived) && damageReceived >= 0 ? damageReceived : 0,
         last_seen_channel: '',

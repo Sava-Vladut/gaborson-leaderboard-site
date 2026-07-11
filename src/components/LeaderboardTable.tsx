@@ -5,6 +5,7 @@ import type { Player, SortMetric } from '../types';
 
 const PAGE_SIZE = 20;
 const SORT_OPTIONS: Array<{ metric: SortMetric; label: string; shortLabel: string }> = [
+  { metric: 'rating', label: 'Combat Rating', shortLabel: 'ELO' },
   { metric: 'kills', label: 'Kills', shortLabel: 'Kills' },
   { metric: 'damageDealt', label: 'Damage Dealt', shortLabel: 'Dealt' },
   { metric: 'damageReceived', label: 'Damage Received', shortLabel: 'Taken' },
@@ -44,18 +45,21 @@ export default function LeaderboardTable({
       </div>
 
       {/* Column header — aligned to the metric grid; labels double as sort toggles */}
-      <div className="hidden md:flex items-center gap-4 px-4 mb-2 pb-2.5 border-b border-line/60
+      <div className="hidden lg:flex items-center gap-4 px-4 mb-2 pb-2.5 border-b border-line/60
         font-pixel text-sm uppercase tracking-[0.18em]">
         <span className="w-12 text-center text-ink-ghost/70">#</span>
         <span className="flex-1 text-ink-ghost/70">Player</span>
-        <span className="w-28 text-left text-ink-ghost/70">Channel</span>
+        <span className="w-24 text-left text-ink-ghost/70">Channel</span>
         <div className="flex items-center gap-4 lg:gap-6">
           {SORT_OPTIONS.map(option => {
             const active = option.metric === sortMetric;
             const isMoney = option.metric === 'money';
+            const isRating = option.metric === 'rating';
             const tone = isMoney
               ? active ? 'text-success' : 'text-success/45 hover:text-success/80'
-              : active ? 'text-accent' : 'text-ink-ghost/60 hover:text-ink-dim';
+              : isRating
+                ? active ? 'text-gold' : 'text-gold/45 hover:text-gold/80'
+                : active ? 'text-accent' : 'text-ink-ghost/60 hover:text-ink-dim';
             return (
               <Fragment key={option.metric}>
                 {isMoney && <span className="w-px" aria-hidden="true" />}

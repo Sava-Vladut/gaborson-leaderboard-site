@@ -30,7 +30,7 @@ export function useLeaderboard(): LeaderboardState {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortMetric, setSortMetric] = useState<SortMetric>('kills');
+  const [sortMetric, setSortMetric] = useState<SortMetric>('rating');
   const [channels, setChannels] = useState<string[]>([]);
   const [channelFilter, setChannelFilter] = useState('all');
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);

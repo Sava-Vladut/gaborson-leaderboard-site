@@ -5,17 +5,20 @@ function normalize(data: ApiPlayer[]): Player[] {
     .map((p, i) => ({
       name: String(p.name ?? '').trim(),
       kills: Number(p.kills ?? 0),
+      deaths: Number(p.deaths ?? 0),
+      rating: Number(p.rating ?? 1000),
       damageDealt: Number(p.damageDealt ?? 0),
       damageReceived: Number(p.damageReceived ?? 0),
       money: Number(p.money ?? 0),
       lastSeenChannel: String(p.lastSeenChannel ?? '').trim(),
       rank: Number(p.rank ?? i + 1),
+      ratingRank: Number(p.ratingRank ?? p.rank ?? i + 1),
       id: `${Number(p.rank ?? i + 1)}-${String(p.name ?? '').trim().toLowerCase()}`,
     }))
     .sort((a, b) => a.rank - b.rank);
 }
 
-export async function fetchLeaderboard(search = '', sort: SortMetric = 'kills', channel = ''): Promise<{ players: Player[]; totalPlayers: number }> {
+export async function fetchLeaderboard(search = '', sort: SortMetric = 'rating', channel = ''): Promise<{ players: Player[]; totalPlayers: number }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 8000);
 
@@ -84,7 +87,24 @@ export async function fetchPlayerContext(playerName: string): Promise<PlayerCont
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(`Server returned ${res.status} ${res.statusText}`);
 
-    return await res.json() as PlayerContext;
+    const data = await res.json() as {
+      totalPlayers: number;
+      leaderKills: number;
+      leaderRating: number;
+      player: ApiPlayer;
+      above: ApiPlayer | null;
+      below: ApiPlayer | null;
+    };
+    const normalizeOne = (entry: ApiPlayer | null) => entry ? normalize([entry])[0] : null;
+
+    return {
+      totalPlayers: Number(data.totalPlayers ?? 0),
+      leaderKills: Number(data.leaderKills ?? 0),
+      leaderRating: Number(data.leaderRating ?? 1000),
+      player: normalizeOne(data.player)!,
+      above: normalizeOne(data.above),
+      below: normalizeOne(data.below),
+    };
   } catch (err) {
     clearTimeout(timer);
     throw err;

@@ -1,9 +1,10 @@
 import { Fragment } from 'react';
 import { formatMoney } from '../api/economy';
+import { getRatingTier } from '../ranking';
 import type { Player, SortMetric } from '../types';
 
 // Column order for the per-metric grid, matching the leaderboard sort tabs.
-const METRIC_ORDER: SortMetric[] = ['kills', 'damageDealt', 'damageReceived', 'money'];
+const METRIC_ORDER: SortMetric[] = ['rating', 'kills', 'damageDealt', 'damageReceived', 'money'];
 
 const RANK_STYLE: Record<number, { text: string; bg: string; border: string }> = {
   1: { text: 'text-gold glow-gold', bg: 'bg-gold/5',   border: 'border-gold/30' },
@@ -27,6 +28,7 @@ export default function PlayerRow({ player, position, maxMetricValue, sortMetric
   const rs    = RANK_STYLE[position];
   const metricValue = player[sortMetric];
   const fill  = Math.max(2, (metricValue / maxMetricValue) * 100);
+  const ratingTier = getRatingTier(player.rating);
   const channelLabel = player.lastSeenChannel ? `#${player.lastSeenChannel}` : '-';
 
   return (
@@ -68,33 +70,39 @@ export default function PlayerRow({ player, position, maxMetricValue, sortMetric
         <div className="mt-1.5 h-[3px] rounded-full bg-line overflow-hidden">
           <div
             className="h-full rounded-full kills-bar"
-            style={{ '--bar-width': `${fill}%`, backgroundColor: barColor(player.rank) } as React.CSSProperties}
+            style={{ '--bar-width': `${fill}%`, backgroundColor: sortMetric === 'rating' ? ratingTier.color : barColor(position) } as React.CSSProperties}
           />
         </div>
-        <p className="mt-1 md:hidden font-pixel text-sm uppercase tracking-widest text-ink-ghost">
+        <p className="mt-1 lg:hidden font-pixel text-sm uppercase tracking-widest text-ink-ghost">
           {channelLabel}
         </p>
       </div>
 
       {/* Desktop: full metric grid — kills · dealt · taken · balance.
          The active sort column is highlighted; a hairline sets balance apart. */}
-      <span className={`hidden md:block w-28 flex-shrink-0 truncate font-pixel text-sm uppercase tracking-widest transition-colors duration-200
+      <span className={`hidden lg:block w-24 flex-shrink-0 truncate font-pixel text-sm uppercase tracking-widest transition-colors duration-200
         ${player.lastSeenChannel ? 'text-accent/75 group-hover:text-accent' : 'text-ink-ghost/60'}`}>
         {channelLabel}
       </span>
 
-      <div className="hidden md:flex items-center gap-4 lg:gap-6 flex-shrink-0">
+      <div className="hidden lg:flex items-center gap-4 lg:gap-6 flex-shrink-0">
         {METRIC_ORDER.map(key => {
           const active = sortMetric === key;
           const isMoney = key === 'money';
+          const isRating = key === 'rating';
           const value = isMoney ? formatMoney(player.money) : player[key].toLocaleString();
           const tone = isMoney
             ? active ? 'text-success' : 'text-success/55 group-hover:text-success/80'
-            : active ? (top ? rs.text : 'text-accent') : 'text-ink-ghost group-hover:text-ink-dim';
+            : isRating
+              ? active ? '' : 'opacity-55 group-hover:opacity-80'
+              : active ? (top ? rs.text : 'text-accent') : 'text-ink-ghost group-hover:text-ink-dim';
           return (
             <Fragment key={key}>
               {isMoney && <span className="w-px h-6 bg-line/70" aria-hidden="true" />}
-              <span className={`w-16 lg:w-20 text-right font-pixel text-lg tabular-nums transition-colors duration-200 ${tone}`}>
+              <span
+                className={`w-16 lg:w-20 text-right font-pixel text-lg tabular-nums transition-all duration-200 ${tone}`}
+                style={isRating ? { color: ratingTier.color } : undefined}
+              >
                 {value}
               </span>
             </Fragment>
@@ -103,8 +111,11 @@ export default function PlayerRow({ player, position, maxMetricValue, sortMetric
       </div>
 
       {/* Mobile / tablet: just the active metric to keep the row compact */}
-      <span className={`md:hidden flex-shrink-0 w-20 text-right font-pixel text-xl tabular-nums transition-colors duration-200
-        ${top ? rs.text : 'text-ink-dim group-hover:text-ink'}`}>
+      <span
+        className={`lg:hidden flex-shrink-0 w-20 text-right font-pixel text-xl tabular-nums transition-colors duration-200
+        ${sortMetric === 'rating' ? '' : top ? rs.text : 'text-ink-dim group-hover:text-ink'}`}
+        style={sortMetric === 'rating' ? { color: ratingTier.color } : undefined}
+      >
         {sortMetric === 'money' ? formatMoney(metricValue) : metricValue.toLocaleString()}
       </span>
     </div>

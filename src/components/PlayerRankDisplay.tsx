@@ -1,8 +1,10 @@
 import { Star } from 'lucide-react';
 import { formatMoney } from '../api/economy';
+import RatingBadge from './RatingBadge';
 import type { Player, SortMetric } from '../types';
 
 const METRIC_LABELS: Record<SortMetric, string> = {
+  rating: 'combat rating',
   kills: 'kills',
   damageDealt: 'damage dealt',
   damageReceived: 'damage taken',
@@ -29,9 +31,13 @@ export default function PlayerRankDisplay({ player, sortMetric }: { player: Play
         </div>
         <div>
           <p className="font-pixel text-2xl text-ink leading-tight">{player.name}</p>
-          <p className="font-pixel text-accent text-xl mt-1">
-            {sortMetric === 'money' ? formatMoney(player.money) : player[sortMetric].toLocaleString()} {METRIC_LABELS[sortMetric]}
-          </p>
+          {sortMetric === 'rating' ? (
+            <div className="mt-2"><RatingBadge rating={player.rating} /></div>
+          ) : (
+            <p className="font-pixel text-accent text-xl mt-1">
+              {sortMetric === 'money' ? formatMoney(player.money) : player[sortMetric].toLocaleString()} {METRIC_LABELS[sortMetric]}
+            </p>
+          )}
         </div>
       </div>
     </div>

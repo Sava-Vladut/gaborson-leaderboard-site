@@ -1,22 +1,28 @@
 export interface Player {
   name: string;
   kills: number;
+  deaths: number;
+  rating: number;
   damageDealt: number;
   damageReceived: number;
   money: number;
   lastSeenChannel: string;
   rank: number;
+  ratingRank: number;
   id: string;
 }
 
 export interface ApiPlayer {
   name: string;
   kills: number;
+  deaths?: number;
+  rating?: number;
   damageDealt: number;
   damageReceived: number;
   money?: number;
   lastSeenChannel?: string;
   rank?: number;
+  ratingRank?: number;
 }
 
 export interface LeaderboardResponse {
@@ -68,9 +74,10 @@ export interface DebugLogsResponse {
 export interface PlayerContext {
   totalPlayers: number;
   leaderKills: number;
+  leaderRating: number;
   player: Player;
   above: Player | null;
   below: Player | null;
 }
 
-export type SortMetric = 'kills' | 'damageDealt' | 'damageReceived' | 'money';
+export type SortMetric = 'rating' | 'kills' | 'damageDealt' | 'damageReceived' | 'money';
