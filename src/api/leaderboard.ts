@@ -94,6 +94,12 @@ export async function fetchPlayerContext(playerName: string): Promise<PlayerCont
       player: ApiPlayer;
       above: ApiPlayer | null;
       below: ApiPlayer | null;
+      activity?: {
+        rangeStart?: number;
+        rangeEnd?: number;
+        totalAppearances?: number;
+        hours?: Array<{ hourStart?: number; appearances?: number }>;
+      };
     };
     const normalizeOne = (entry: ApiPlayer | null) => entry ? normalize([entry])[0] : null;
 
@@ -104,6 +110,17 @@ export async function fetchPlayerContext(playerName: string): Promise<PlayerCont
       player: normalizeOne(data.player)!,
       above: normalizeOne(data.above),
       below: normalizeOne(data.below),
+      activity: {
+        rangeStart: Number(data.activity?.rangeStart ?? 0),
+        rangeEnd: Number(data.activity?.rangeEnd ?? Date.now()),
+        totalAppearances: Number(data.activity?.totalAppearances ?? 0),
+        hours: (data.activity?.hours ?? [])
+          .map(hour => ({
+            hourStart: Number(hour.hourStart ?? 0),
+            appearances: Number(hour.appearances ?? 0),
+          }))
+          .filter(hour => hour.hourStart > 0 && hour.appearances > 0),
+      },
     };
   } catch (err) {
     clearTimeout(timer);

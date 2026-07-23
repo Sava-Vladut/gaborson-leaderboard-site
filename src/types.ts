@@ -78,6 +78,19 @@ export interface PlayerContext {
   player: Player;
   above: Player | null;
   below: Player | null;
+  activity: PlayerActivity;
+}
+
+export interface PlayerActivityHour {
+  hourStart: number;
+  appearances: number;
+}
+
+export interface PlayerActivity {
+  rangeStart: number;
+  rangeEnd: number;
+  totalAppearances: number;
+  hours: PlayerActivityHour[];
 }
 
 export type SortMetric = 'rating' | 'kills' | 'damageDealt' | 'damageReceived' | 'money';

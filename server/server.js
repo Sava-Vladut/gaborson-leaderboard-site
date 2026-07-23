@@ -11,6 +11,7 @@ import {
   listBalances,
   listChannels,
   listPlayers,
+  recordPlayerAppearance,
   setMoney,
   upsertPlayer,
 } from './db.js';
@@ -165,6 +166,17 @@ function normalizeBalance(input) {
   return { balance: { name, money: Math.max(0, Math.floor(money)) } };
 }
 
+function normalizeAppearance(input) {
+  const name = String(input.name ?? input.playerName ?? '').trim();
+  if (!name) return { error: 'name is required' };
+  if (name.length > 40) return { error: 'name must be 40 characters or fewer' };
+
+  const channel = normalizeChannelName(input.channel ?? input.lastSeenChannel ?? '');
+  if (channel.length > 80) return { error: 'channel must be 80 characters or fewer' };
+
+  return { appearance: { name, channel } };
+}
+
 function handleGetLeaderboard(url, res) {
   const search = url.searchParams.get('search') ?? '';
   const sort = url.searchParams.get('sort') ?? 'rating';
@@ -237,6 +249,21 @@ async function handlePostLeaderboard(req, res) {
   upsertPlayer(player);
   logEvent('info', 'unity', 'Leaderboard update accepted', player);
   sendJson(res, 201, { ok: true, player, leaderboard: listPlayers() });
+}
+
+async function handlePostActivity(req, res) {
+  const body = await readJsonBody(req);
+  const { appearance, error } = normalizeAppearance(body);
+
+  if (error) {
+    logEvent('warn', 'unity', 'Rejected chatter appearance', { error });
+    sendError(res, 400, error);
+    return;
+  }
+
+  recordPlayerAppearance(appearance);
+  logEvent('info', 'unity', 'Chatter appearance recorded', appearance);
+  sendJson(res, 201, { ok: true, appearance });
 }
 
 async function handlePostEloEvent(req, res) {
@@ -321,6 +348,11 @@ const server = createServer(async (req, res) => {
 
     if (url.pathname === '/api/leaderboard' && req.method === 'POST') {
       await handlePostLeaderboard(req, res);
+      return;
+    }
+
+    if (url.pathname === '/api/activity' && req.method === 'POST') {
+      await handlePostActivity(req, res);
       return;
     }
 

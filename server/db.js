@@ -41,6 +41,16 @@ db.exec(`
     delta           INTEGER NOT NULL,
     created_at      INTEGER NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS player_activity_hourly (
+    name_key        TEXT NOT NULL,
+    hour_start      INTEGER NOT NULL,
+    appearances     INTEGER NOT NULL DEFAULT 1 CHECK (appearances > 0),
+    PRIMARY KEY (name_key, hour_start),
+    FOREIGN KEY (name_key) REFERENCES players(name_key) ON DELETE CASCADE
+  );
+  CREATE INDEX IF NOT EXISTS idx_player_activity_hour
+    ON player_activity_hourly (hour_start DESC);
 `);
 
 db.exec('DROP TABLE IF EXISTS placement_history');
@@ -67,6 +77,18 @@ if (!existingCols.includes('last_seen_channel')) {
   db.exec("ALTER TABLE players ADD COLUMN last_seen_channel TEXT NOT NULL DEFAULT ''");
 }
 db.exec('CREATE INDEX IF NOT EXISTS idx_players_rating ON players (rating DESC, name ASC)');
+
+const HOUR_MS = 60 * 60 * 1000;
+const ACTIVITY_HISTORY_DAYS = 50;
+
+// Give existing players a truthful first activity point from their last known
+// update. INSERT OR IGNORE keeps this migration safe on every server restart.
+db.exec(`
+  INSERT OR IGNORE INTO player_activity_hourly (name_key, hour_start, appearances)
+  SELECT name_key, updated_at - (updated_at % ${HOUR_MS}), 1
+  FROM players
+  WHERE updated_at > 0
+`);
 
 const LIST_SQL = `
   SELECT
@@ -126,11 +148,40 @@ const upsertStmt = db.prepare(`
     updated_at      = excluded.updated_at
 `);
 
+const recordActivityStmt = db.prepare(`
+  INSERT INTO player_activity_hourly (name_key, hour_start, appearances)
+  VALUES (@name_key, @hour_start, 1)
+  ON CONFLICT(name_key, hour_start) DO UPDATE SET
+    appearances = player_activity_hourly.appearances + 1
+`);
+
+const playerActivityStmt = db.prepare(`
+  SELECT
+    hour_start AS hourStart,
+    appearances
+  FROM player_activity_hourly
+  WHERE name_key = @name_key
+    AND hour_start >= @range_start
+  ORDER BY hour_start ASC
+`);
+
 const ensureRatedPlayerStmt = db.prepare(`
   INSERT INTO players (name_key, name, rating, updated_at)
   VALUES (@name_key, @name, ${DEFAULT_ELO_RATING}, @updated_at)
   ON CONFLICT(name_key) DO UPDATE SET
     name = excluded.name
+`);
+
+const ensureActivityPlayerStmt = db.prepare(`
+  INSERT INTO players (name_key, name, last_seen_channel, updated_at)
+  VALUES (@name_key, @name, @last_seen_channel, @updated_at)
+  ON CONFLICT(name_key) DO UPDATE SET
+    name = excluded.name,
+    last_seen_channel = CASE
+      WHEN excluded.last_seen_channel <> '' THEN excluded.last_seen_channel
+      ELSE players.last_seen_channel
+    END,
+    updated_at = excluded.updated_at
 `);
 
 const selectRatingStmt = db.prepare(`
@@ -448,11 +499,22 @@ export function getGlobalStats() {
 }
 
 export function getPlayerContext(name) {
+  const nameKey = String(name ?? '').trim().toLowerCase();
   const rows = playerContextStmt.all({
-    name_key: String(name ?? '').trim().toLowerCase(),
+    name_key: nameKey,
   });
   const player = rows.find((row) => row.kind === 'player');
   if (!player) return null;
+
+  const now = Date.now();
+  const rangeStart = now - ACTIVITY_HISTORY_DAYS * 24 * HOUR_MS;
+  const activityHours = playerActivityStmt.all({
+    name_key: nameKey,
+    range_start: rangeStart,
+  }).map((row) => ({
+    hourStart: Number(row.hourStart),
+    appearances: Number(row.appearances),
+  }));
 
   const toPlayer = (row) => row ? ({
     name: row.name,
@@ -474,10 +536,17 @@ export function getPlayerContext(name) {
     player: toPlayer(player),
     above: toPlayer(rows.find((row) => row.kind === 'above')),
     below: toPlayer(rows.find((row) => row.kind === 'below')),
+    activity: {
+      rangeStart,
+      rangeEnd: now,
+      totalAppearances: activityHours.reduce((sum, row) => sum + row.appearances, 0),
+      hours: activityHours,
+    },
   };
 }
 
 export function upsertPlayer({ name, kills, deaths = 0, damageDealt = 0, damageReceived = 0, lastSeenChannel = '' }) {
+  const now = Date.now();
   upsertStmt.run({
     name_key: name.toLowerCase(),
     name,
@@ -486,7 +555,22 @@ export function upsertPlayer({ name, kills, deaths = 0, damageDealt = 0, damageR
     damage_dealt: damageDealt,
     damage_received: damageReceived,
     last_seen_channel: lastSeenChannel,
-    updated_at: Date.now(),
+    updated_at: now,
+  });
+}
+
+export function recordPlayerAppearance({ name, channel = '' }) {
+  const now = Date.now();
+  const nameKey = name.toLowerCase();
+  ensureActivityPlayerStmt.run({
+    name_key: nameKey,
+    name,
+    last_seen_channel: channel,
+    updated_at: now,
+  });
+  recordActivityStmt.run({
+    name_key: nameKey,
+    hour_start: now - (now % HOUR_MS),
   });
 }
 

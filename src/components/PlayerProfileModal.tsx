@@ -6,6 +6,7 @@ import {
 import { fetchPlayerContext } from '../api/leaderboard';
 import { formatMoney } from '../api/economy';
 import { getRatingTier, getRatingTierProgress } from '../ranking';
+import PlayerActivityGraph from './PlayerActivityGraph';
 import RatingBadge from './RatingBadge';
 import type { Player, PlayerContext } from '../types';
 
@@ -153,18 +154,18 @@ export default function PlayerProfileModal({
   return (
     <div
       ref={ref}
-      className={`fixed inset-0 bg-void/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto ${closing ? 'backdrop-exit' : 'backdrop-enter'}`}
+      className={`fixed inset-0 bg-void/85 backdrop-blur-md z-50 flex items-stretch justify-center overflow-y-auto ${closing ? 'backdrop-exit' : 'backdrop-enter'}`}
       onClick={e => { if (e.target === ref.current) close(); }}
     >
       {/* Drop-shadow wrapper carries the glow along the notched silhouette */}
       <div
-        className={`${closing ? 'modal-exit' : 'modal-enter'} w-full max-w-3xl my-auto`}
+        className={`${closing ? 'modal-exit' : 'modal-enter'} w-full min-h-[100dvh]`}
         style={{ filter: `drop-shadow(0 30px 60px rgba(0,0,0,0.55)) drop-shadow(0 0 36px ${color}22)` }}
         onAnimationEnd={e => { if (closing && e.target === e.currentTarget) onClose(); }}
       >
         {/* Border layer — 1px sliver that follows the clip-path */}
-        <div className="relative p-px" style={{ clipPath: PANEL_CLIP, background: `linear-gradient(135deg, ${color}55, ${color}14 30%, #132030 60%, ${color}30)` }}>
-          <div className="relative bg-surface overflow-hidden" style={{ clipPath: PANEL_CLIP }}>
+        <div className="relative p-px min-h-[100dvh] flex" style={{ clipPath: PANEL_CLIP, background: `linear-gradient(135deg, ${color}55, ${color}14 30%, #132030 60%, ${color}30)` }}>
+          <div className="relative bg-surface overflow-hidden flex-1 flex flex-col" style={{ clipPath: PANEL_CLIP }}>
 
             {/* Atmospheric layers */}
             <div className="absolute inset-0 pointer-events-none scanlines opacity-60" />
@@ -196,7 +197,7 @@ export default function PlayerProfileModal({
               </button>
             </div>
 
-            <div className="relative flex flex-col sm:flex-row">
+            <div className="relative flex flex-1 flex-col sm:flex-row">
 
               {/* ════ LEFT: identity dossier ════════════════════ */}
               <div className="relative sm:w-[266px] flex-shrink-0 flex flex-col items-center gap-5 px-6 py-7 overflow-hidden">
@@ -302,8 +303,10 @@ export default function PlayerProfileModal({
                   })}
                 </div>
 
+                <PlayerActivityGraph activity={activeContext?.activity} />
+
                 {/* Rank position rail */}
-                <div className="dossier-tile bg-elevated rounded-lg p-4 border border-line" style={{ animationDelay: '480ms' }}>
+                <div className="dossier-tile bg-elevated rounded-lg p-4 border border-line" style={{ animationDelay: '520ms' }}>
                   <div className="flex items-center justify-between gap-3 mb-3">
                     <p className="font-pixel text-base text-ink-ghost uppercase tracking-[0.2em]">Rank Position</p>
                     <p className="font-pixel text-base text-ink-dim">
